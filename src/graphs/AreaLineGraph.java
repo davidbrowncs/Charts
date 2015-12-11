@@ -10,7 +10,7 @@ public class AreaLineGraph<E extends Number, T extends Number> extends LineGraph
 	private static final long serialVersionUID = -9116139559301144472L;
 
 	protected double alphaFraction = 0.3d;
-
+	
 	public AreaLineGraph() {
 		super();
 	}

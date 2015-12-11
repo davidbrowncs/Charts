@@ -53,7 +53,7 @@ class Legend extends JPanel {
 
 	public void paintComponent(Graphics g1) {
 		Graphics2D g = (Graphics2D) g1;
-		super.paintComponent(g);
+		super.paintComponent(g1);
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		RoundRectangle2D.Double rect = new RoundRectangle2D.Double(0, 0, this.getWidth(), this.getHeight(), 25, 25);
 		Color oldColor = g.getColor();

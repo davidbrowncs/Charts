@@ -187,13 +187,13 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		legend.setVisible(legendVisible);
 		return legend;
 	}
-	
+
 	public void legendLeftSide() {
 		remove(legendContainer);
 		add(legendContainer, BorderLayout.WEST);
 		revalidate();
 	}
-	
+
 	public void legendRightSide() {
 		remove(legendContainer);
 		add(legendContainer, BorderLayout.EAST);
@@ -214,14 +214,17 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		setLegendVisible(true);
 		this.seriesNames = (ArrayList<String>) s.clone();
 		updated();
+		getLegend().setSeriesNames(seriesNames);
+		repaint();
 	}
 
 	@SuppressWarnings("unchecked")
 	public void setSeriesColors(ArrayList<Color> colors) {
-		setLegendVisible(true);
 		this.seriesColors = (ArrayList<Color>) colors.clone();
 		autoColors = false;
 		updated();
+		getLegend().setSeriesColors(seriesColors);
+		repaint();
 	}
 
 	public void autoColors() {
@@ -233,7 +236,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		updated();
 		repaint();
 	}
-	
+
 	public void setLegendBackgroundColor(Color c) {
 		getLegend().setBackgroundColor(c);
 	}
@@ -251,21 +254,18 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 			convertPoints();
 		}
 		numSeries = dataSet.getDependent().size();
-		boolean modified = false;
 		if (numSeries > seriesColors.size()) {
 			int sz = numSeries - seriesColors.size();
 			for (int i = 0; i < sz; i++) {
 				seriesColors.add(ColorGenerator.getColor(alpha));
 			}
 			getLegend().setSeriesColors(seriesColors);
-			modified = true;
 		} else if (numSeries < seriesColors.size()) {
 			int sz = seriesColors.size() - numSeries;
 			for (int i = 0; i < sz; i++) {
 				seriesColors.remove(seriesColors.size() - 1);
 			}
 			getLegend().setSeriesColors(seriesColors);
-			modified = true;
 		}
 		if (numSeries > seriesNames.size()) {
 			int sz = numSeries - seriesNames.size();
@@ -273,17 +273,12 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 				seriesNames.add("Series - " + Integer.toString(seriesNames.size() + 1));
 			}
 			getLegend().setSeriesNames(seriesNames);
-			modified = true;
 		} else if (numSeries < seriesNames.size()) {
 			int sz = seriesNames.size() - numSeries;
 			for (int i = 0; i < sz; i++) {
 				seriesNames.remove(seriesNames.size() - 1);
 			}
 			getLegend().setSeriesNames(seriesNames);
-			modified = true;
-		}
-		if (modified) {
-			getLegend().revalidate();
 		}
 	}
 
@@ -302,7 +297,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	public void setYLabel(String lbl) {
 		removeOldLabel(this.yLabel);
 		this.yLabel = new DefaultLabel(lbl, SwingConstants.CENTER, FontType.TEXT, fontLoader);
-		add(this.yLabel, BorderLayout.WEST);       
+		add(this.yLabel, BorderLayout.WEST);
 	}
 
 	protected void removeOldLabel(JLabel old) {

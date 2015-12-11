@@ -31,13 +31,13 @@ public class ScatterGraphExample {
 		// recorded results and simply to display them rather than generate
 		// results
 		ArrayList<Double> nonFunctionResults = new ArrayList<>();
-		for (double y = -5; y < 5.000000005; y += 0.25) {
+		for (double y = -5; y < 5; y += 0.25) {
 			nonFunctionResults.add(y);
 		}
 		d.addDep(nonFunctionResults);
 
 		ArrayList<Double> xVals = new ArrayList<>();
-		for (double i = -5; i < 5.000000005 /* Double rounding error */; i += 0.25) {
+		for (double i = -5; i < 5; i += 0.25) {
 			xVals.add(i);
 		}
 		d.setInd(xVals);

@@ -14,7 +14,7 @@ import data.DataSet;
 
 public class GraphTesting {
 
-	private static ScatterGraph<Double, Double> g;
+	private static LineGraph<Double, Double> g;
 	
 	public static void main(String[] args) {
 		DataSet<Double, Double> d = new DataSet<>();
@@ -24,23 +24,23 @@ public class GraphTesting {
 //		});
 
 		Random rand = new Random();
-		for (double i = -10; i < 10; i += rand.nextDouble() * 2) {
+		for (double i = -10; i < 10; i += 0.5d) {
 			xVals.add(i);
 		}
 		d.setInd(xVals);
-//		
-//		d.addFunction(x -> {
-//			return Math.exp(-x * 1d / 15d) * Math.sin(x * Math.PI);
-//		});
+		
 		d.addFunction(x -> {
-			return (2 * Math.pow(x, 3) - 9 * Math.pow(x, 2) - 24 * x + 2) / 10000d;
+			return Math.exp(-x * 1d / 15d) * Math.sin(x * Math.PI);
 		});
+//		d.addFunction(x -> {
+//			return (2 * Math.pow(x, 3) - 9 * Math.pow(x, 2) - 24 * x + 2) / 10000d;
+//		});
 
 		SwingUtilities.invokeLater(() -> {
 			JFrame frame = new JFrame();
-			g = new ScatterGraph<>();
+			g = new LineGraph<>();
 			g.setDataSet(d);
-			g.setShapeSize(0.4d);
+			g.setPointSize(0.5);
 			g.setTitle("Damped sin wave");
 			g.setLegendTitle("Legend");
 			ArrayList<String> s = new ArrayList<>();
