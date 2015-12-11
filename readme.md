@@ -12,4 +12,4 @@ The aim is to provide a good looking, and also fairly accurate charting framewor
 ![][sin]
 
 [circle]: https://github.com/davidbrowncs/Charts/blob/master/exampleImages/2015-12-10-22-50-11.png?raw=true "Example circle image"
-[sin]: https://github.com/davidbrowncs/Charts/blob/master/exampleImages/2015-12-10-16-39-12.png?raw=true "Damped sin wave"
+[sin]: https://github.com/davidbrowncs/Charts/blob/master/exampleImages/2015-12-11-13-57-04.png?raw=true "Damped sin wave"
