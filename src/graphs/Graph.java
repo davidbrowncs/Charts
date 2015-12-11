@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.UIManager;
 
 import utils.ColorGenerator;
 import data.DataSet;
@@ -25,7 +26,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	protected static int graphCounter = 0;
 	protected int id = graphCounter++;
-	
+
 	protected DataSet<E, T> dataSet;
 
 	// Graphs drawn to this, not the Graph panel itself
@@ -57,7 +58,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	protected static final Color DEFAULT_STROKE_COLOR = Color.BLACK;
 	protected static final Color DEFAULT_AXIS_STROKE_COLOR = Color.BLACK;
-	protected static final Color DEFAULT_BACKGROUND_COLOR = new Color(240, 240, 240);
+	protected static final Color DEFAULT_BACKGROUND_COLOR = UIManager.getColor("Panel.background");
 	protected static final Color DEFAULT_GRIDLINE_COLOR = new Color(176, 176, 176, 200);
 
 	protected Color strokeColor = DEFAULT_STROKE_COLOR;
@@ -90,7 +91,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected abstract void convertPoints();
 
 	public abstract void setDataSet(DataSet<E, T> dataSet);
-	
+
 	public Graph() {
 		FontLoader.init();
 		this.setLayout(new BorderLayout());
@@ -116,11 +117,11 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	public DataSet<E, T> getDataSet() {
 		return dataSet;
 	}
-	
+
 	public void removeDataSet() {
 		this.dataSet = null;
 	}
-	
+
 	public void setTransparency(double d) {
 		alpha = utils.ColorGenerator.convertToRGB(assertInRange(0, 1, d));
 	}
@@ -219,6 +220,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected void checkAA(Graphics2D g) {
 		if (antiAliasing) {
 			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
 			g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
 			g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
 			g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -229,7 +231,9 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		}
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
@@ -240,7 +244,9 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		return result;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override

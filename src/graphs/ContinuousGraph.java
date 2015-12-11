@@ -13,7 +13,7 @@ import java.util.Objects;
 import utils.DoubleCheck;
 import data.DataSet;
 
-public abstract class TwoVarGraph<E extends Number, T extends Number> extends Graph<E, T> {
+public abstract class ContinuousGraph<E extends Number, T extends Number> extends Graph<E, T> {
 	private static final long serialVersionUID = 1805212588655879298L;
 
 	protected ArrayList<Double> xPlotPoints = new ArrayList<>();
@@ -44,7 +44,7 @@ public abstract class TwoVarGraph<E extends Number, T extends Number> extends Gr
 	protected boolean drawYGridLines = true;
 	protected int numYGridLines = 9;
 
-	public TwoVarGraph() {
+	public ContinuousGraph() {
 		super();
 	}
 
@@ -97,7 +97,7 @@ public abstract class TwoVarGraph<E extends Number, T extends Number> extends Gr
 					}
 				} else {
 					this.xMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.003d ? 0 : tmpMin;
-					this.xMaxVal = tmpMax;
+					this.xMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math.rint(tmpMax) : tmpMax;
 				}
 			} else {
 				if (closeEnough(tmpMax, tmpMin)) {
@@ -113,7 +113,7 @@ public abstract class TwoVarGraph<E extends Number, T extends Number> extends Gr
 					}
 				} else {
 					this.yMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.003d ? 0 : tmpMin;
-					this.yMaxVal = tmpMax;
+					this.yMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math.rint(tmpMax) : tmpMax;
 				}
 			}
 		}

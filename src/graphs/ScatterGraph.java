@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.function.Function;
 
-public class ScatterGraph<E extends Number, T extends Number> extends TwoVarGraph<E, T> {
+public class ScatterGraph<E extends Number, T extends Number> extends ContinuousGraph<E, T> {
 
 	private static final long serialVersionUID = -2096068392172639822L;
 

@@ -4,7 +4,7 @@ package graphs;
 import java.awt.Graphics2D;
 import java.awt.geom.Line2D;
 
-public class LineGraph<E extends Number, T extends Number> extends TwoVarGraph<E, T> {
+public class LineGraph<E extends Number, T extends Number> extends ContinuousGraph<E, T> {
 	private static final long serialVersionUID = 830656033876679737L;
 
 	public LineGraph() {

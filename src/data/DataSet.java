@@ -148,9 +148,12 @@ public final class DataSet<E, T extends Number> {
 	 * Re-applies functions, used when dataset modified
 	 */
 	private void reApplyFunctions() {
+		if (functionIndexes.isEmpty()) {
+			return;
+		}
 		Collections.sort(functionIndexes);
 		for (int i = functionIndexes.get(functionIndexes.size() - 1); i >= 0; i--) {
-			depVars.remove(i);
+			depVars.remove(functionIndexes.get(i));
 		}
 		functionIndexes.clear();
 		for (Function<E, T> f : functions) {
