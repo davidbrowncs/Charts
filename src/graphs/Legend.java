@@ -1,9 +1,19 @@
 
 package graphs;
 
+import graphs.DefaultLabel.FontType;
+
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.font.FontRenderContext;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
 
 import javax.swing.JLabel;
@@ -20,15 +30,41 @@ class Legend extends JPanel {
 	private static final long serialVersionUID = 5725435102513897890L;
 
 	private JLabel legendTitle = null;
-
 	private ArrayList<JLabel> dataSeries = new ArrayList<>();
 	private ArrayList<ColorBox> seriesColors = new ArrayList<>();
 
-	private double alpha;
+	private final static String maxStringSize = "Long text sampleaaaaa";
+	private int maxLabelSize;
 
-	Legend() {
+	private Color backgroundColor = new Color(150, 150, 150, 0);
+	private int alpha = 0;
+
+	private Graph<?, ?> graph;
+
+	Legend(Graph<?, ?> g) {
+		this.graph = g;
 		setLayout(new MigLayout("", "[][grow]", "[][]"));
-		setOpaque(false);
+		setBackground(backgroundColor);
+
+		AffineTransform a = new AffineTransform();
+		FontRenderContext frc = new FontRenderContext(a, true, true);
+		maxLabelSize = (int) g.getFontLoader().getTextFont().getStringBounds(maxStringSize, frc).getWidth();
+	}
+
+	public void paintComponent(Graphics g1) {
+		Graphics2D g = (Graphics2D) g1;
+		super.paintComponent(g);
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		RoundRectangle2D.Double rect = new RoundRectangle2D.Double(0, 0, this.getWidth(), this.getHeight(), 25, 25);
+		Color oldColor = g.getColor();
+		g.setColor(backgroundColor);
+		g.fill(rect);
+		g.setColor(oldColor);
+	}
+
+	public void setBackgroundColor(Color c) {
+		backgroundColor = utils.ColorGenerator.convertToAlpha(c, alpha);
+		repaint();
 	}
 
 	void setTitle(String s) {
@@ -41,7 +77,7 @@ class Legend extends JPanel {
 		for (ColorBox c : seriesColors) {
 			remove(c);
 		}
-		legendTitle = new DefaultLabel(s, DefaultLabel.SUB_TITLE);
+		legendTitle = new DefaultLabel(s, FontType.SUB_TITLE, graph.getFontLoader());
 		add(legendTitle, "cell 0 0 2 1,alignx left");
 
 		ArrayList<Color> c = new ArrayList<>();
@@ -63,7 +99,11 @@ class Legend extends JPanel {
 		dataSeries.clear();
 		int counter = legendTitle == null ? 0 : 1;
 		for (int i = 0; i < series.size(); i++, counter++) {
-			JLabel l = new DefaultLabel(series.get(i), DefaultLabel.TEXT);
+			JLabel l = new DefaultLabel(series.get(i), FontType.TEXT, graph.getFontLoader());
+			Font font = l.getFont();
+			l.setText("<html><body style=\fontFamily: " + font.getFamily() + "\" size =\"" + font.getSize() + "\"></font>"
+					+ l.getText() + "</html");
+			l.setMaximumSize(new Dimension(maxLabelSize, 1080));
 			dataSeries.add(l);
 			add(l, "cell 1 " + counter + ",alignx left");
 		}
@@ -74,12 +114,34 @@ class Legend extends JPanel {
 			remove(c);
 		}
 		seriesColors.clear();
-		System.out.println("Num series colors: " + colors.size());
 		int counter = legendTitle == null ? 0 : 1;
 		for (int i = 0; i < colors.size(); i++, counter++) {
 			ColorBox c = new ColorBox(colors.get(i));
-			this.seriesColors.add(c);
+			seriesColors.add(c);
 			add(c, "cell 0 " + counter + ",alignx center");
+		}
+	}
+
+	void setAlphaComponent(double a) {
+		int nv = utils.ColorGenerator.convertTo8Bit(a);
+		if (nv != alpha) {
+			backgroundColor = utils.ColorGenerator.convertToAlpha(backgroundColor, nv);
+			alpha = nv;
+			changeAlpha(this, alpha);
+		}
+		repaint();
+	}
+
+	public void changeAlpha(Component component, int alpha) {
+		if (component != this) {
+			component.setBackground(utils.ColorGenerator.convertToAlpha(component.getBackground(), alpha));
+		}
+		if (component instanceof ColorBox) {
+			((ColorBox) component).color = utils.ColorGenerator.convertToAlpha(((ColorBox) component).color, alpha);
+		} else if (component instanceof Container) {
+			for (Component child : ((Container) component).getComponents()) {
+				changeAlpha(child, alpha);
+			}
 		}
 	}
 

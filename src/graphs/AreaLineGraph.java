@@ -6,12 +6,12 @@ import java.awt.Composite;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 
-public class AreaFilledLineGraph<E extends Number, T extends Number> extends LineGraph<E, T> {
+public class AreaLineGraph<E extends Number, T extends Number> extends LineGraph<E, T> {
 	private static final long serialVersionUID = -9116139559301144472L;
 
 	protected double alphaFraction = 0.3d;
 
-	public AreaFilledLineGraph() {
+	public AreaLineGraph() {
 		super();
 	}
 
@@ -22,7 +22,7 @@ public class AreaFilledLineGraph<E extends Number, T extends Number> extends Lin
 		g.setComposite(a);
 		Double xPrev = null;
 		Double yPrev = null;
-		double yOrigin = 0d > yMinVal ? convert(0d, false) : convert(yMinVal, false);
+		double yOrigin = convert(Math.max(0d, yMinVal), false);
 		for (int i = 0, y = 0; i < yPlotPoints.size() / xPlotPoints.size(); i++) {
 			Polygon p;
 			xPrev = xPlotPoints.get(0);

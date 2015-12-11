@@ -80,7 +80,9 @@ public final class ColorGenerator {
 			initialise();
 			return getColor();
 		} else {
-			return colors.get(counter++ % colors.size());
+			Color c = colors.get(counter++ % colors.size());
+			System.out.println(c);
+			return c;
 		}
 	}
 
@@ -92,7 +94,7 @@ public final class ColorGenerator {
 		return colorMap.get(name);
 	}
 
-	public static int convertToRGB(double factor) {
+	public static int convertTo8Bit(double factor) {
 		int ret = (int) (255 * factor);
 		if (ret < 0) {
 			ret = 0;

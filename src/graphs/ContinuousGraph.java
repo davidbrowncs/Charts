@@ -12,6 +12,7 @@ import java.util.Objects;
 
 import utils.DoubleCheck;
 import data.DataSet;
+import fileHandling.FontLoader;
 
 public abstract class ContinuousGraph<E extends Number, T extends Number> extends Graph<E, T> {
 	private static final long serialVersionUID = 1805212588655879298L;
@@ -97,7 +98,8 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 					}
 				} else {
 					this.xMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.003d ? 0 : tmpMin;
-					this.xMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math.rint(tmpMax) : tmpMax;
+					this.xMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math
+							.rint(tmpMax) : tmpMax;
 				}
 			} else {
 				if (closeEnough(tmpMax, tmpMin)) {
@@ -113,7 +115,8 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 					}
 				} else {
 					this.yMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.003d ? 0 : tmpMin;
-					this.yMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math.rint(tmpMax) : tmpMax;
+					this.yMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math
+							.rint(tmpMax) : tmpMax;
 				}
 			}
 		}
@@ -127,9 +130,9 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 			this.dataSet = dataSet;
 			dataSet.addObserver(this);
 			updated();
-		} 
+		}
 	}
-	
+
 	protected void resize(List<Double> vals, List<Double> processed, boolean horizontal) {
 		hpad = null;
 		vpad = null;
@@ -311,7 +314,7 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 	protected void drawLabels(Graphics2D g, boolean h) {
 		g.setStroke(axisStroke);
 		g.setColor(axisStrokeColor);
-		g.setFont(FontLoader.getTinyFont());
+		g.setFont(fontLoader.getLabelFont());
 		g.setColor(axisStrokeColor);
 		DecimalFormat format = new DecimalFormat("0.###E0");
 
@@ -383,22 +386,6 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 				}
 				g.drawString(display, place, (int) i - 5);
 			}
-		}
-	}
-
-	protected double roundNice(double val) {
-		double fraction = 1;
-		boolean negative = val < 0;
-		val = negative ? -val : val;
-		double log = Math.floor(Math.log10(val));
-
-		if (log > 1) {
-			fraction = 4;
-		}
-		if (negative) {
-			return -Math.round(val * fraction * Math.pow(10, -log)) / fraction / Math.pow(10, -log);
-		} else {
-			return Math.round(val * fraction * Math.pow(10, -log)) / fraction / Math.pow(10, -log);
 		}
 	}
 

@@ -4,6 +4,7 @@ package graphs;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.util.ArrayList;
+import java.util.Random;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -13,6 +14,8 @@ import data.DataSet;
 
 public class GraphTesting {
 
+	private static ScatterGraph<Double, Double> g;
+	
 	public static void main(String[] args) {
 		DataSet<Double, Double> d = new DataSet<>();
 		ArrayList<Double> xVals = new ArrayList<>();
@@ -20,38 +23,50 @@ public class GraphTesting {
 //			return x + Math.exp(- 0.2 * x) * Math.sin(5 * x);
 //		});
 
-		for (double i = -10; i < 10; i += .005) {
+		Random rand = new Random();
+		for (double i = -10; i < 10; i += rand.nextDouble() * 2) {
 			xVals.add(i);
 		}
 		d.setInd(xVals);
-		
-		d.addFunction(x -> {
-			return Math.exp(-x * 1d / 15d) * Math.sin(x * Math.PI);
-		});
+//		
 //		d.addFunction(x -> {
-//			return 2 * Math.pow(x, 3) - 9 * Math.pow(x, 2) - 24 * x + 2;
+//			return Math.exp(-x * 1d / 15d) * Math.sin(x * Math.PI);
 //		});
+		d.addFunction(x -> {
+			return (2 * Math.pow(x, 3) - 9 * Math.pow(x, 2) - 24 * x + 2) / 10000d;
+		});
 
 		SwingUtilities.invokeLater(() -> {
 			JFrame frame = new JFrame();
-			Graph<Double, Double> g = new LineGraph<>();
+			g = new ScatterGraph<>();
 			g.setDataSet(d);
-//			g.setTitle("Damped sin wave");
-//			g.setLegendTitle("Legend");
+			g.setShapeSize(0.4d);
+			g.setTitle("Damped sin wave");
+			g.setLegendTitle("Legend");
 			ArrayList<String> s = new ArrayList<>();
-//			s.add("second");
-//			s.add("lol");
-//			g.setSeriesNames(s);
+			g.setLegendTransparency(0.9d);
+			g.setSeriesNames(s);
+			g.setLegendBackgroundColor(Color.PINK);
 			ArrayList<Color> colors = new ArrayList<>();
 			colors.add(ColorGenerator.DARK_CYAN);
 			colors.add(ColorGenerator.DARK_CYAN);
 			g.setSeriesColors(colors);
 			g.setPreferredSize(new Dimension(1000, 1000));
+			g.legendLeftSide();
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			frame.add(g);
 			frame.pack();
 			frame.setLocationRelativeTo(null);
 			frame.setVisible(true);
 		});
+		
+	}
+	
+	private static void sleep() {
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 }

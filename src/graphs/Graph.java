@@ -4,10 +4,13 @@ package graphs;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Stroke;
 import java.util.ArrayList;
 
 import javax.swing.JLabel;
@@ -17,6 +20,8 @@ import javax.swing.UIManager;
 
 import utils.ColorGenerator;
 import data.DataSet;
+import fileHandling.FontLoader;
+import graphs.DefaultLabel.FontType;
 
 public abstract class Graph<E, T extends Number> extends JPanel {
 	private static final long serialVersionUID = 9103378308225496616L;
@@ -28,6 +33,8 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected int id = graphCounter++;
 
 	protected DataSet<E, T> dataSet;
+
+	protected FontLoader fontLoader = new FontLoader();
 
 	// Graphs drawn to this, not the Graph panel itself
 	protected JPanel drawingPanel = new JPanel() {
@@ -43,16 +50,15 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	/************************ Drawing vars ******************************/
 
-	protected boolean antiAliasing = true;
 	protected double prcntMargin = 0.10d;
 
 	// Is multiplied by prcnt margin, so the amount extra for gridlines is (max
 	// or mind data set val) + or - prcntMargin * axisPadding
 	protected double axisPadding = 0.3d;
 
-	protected BasicStroke stroke = new BasicStroke(1.5f);
-	protected BasicStroke axisStroke = new BasicStroke(1.0f);
-	protected BasicStroke gridLineStroke = new BasicStroke(1.0f);
+	protected Stroke stroke = new BasicStroke(1.5f);
+	protected Stroke axisStroke = new BasicStroke(1.0f);
+	protected Stroke gridLineStroke = new BasicStroke(1.0f);
 
 	/*********** Colours **********/
 
@@ -72,13 +78,15 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected JLabel title = null;
 	protected JLabel xLabel = null;
 	protected JLabel yLabel = null;
-	protected Legend legend = new Legend();
+	protected Legend legend = null;
+	protected JPanel legendContainer = new JPanel();
+	protected boolean legendVisible = false;
 
 	protected Font font = null;
 
 	protected int numSeries = 0;
 	protected ArrayList<Color> seriesColors = new ArrayList<>();
-	protected boolean manualColors = false;
+	protected boolean autoColors = true;
 
 	protected ArrayList<String> seriesNames = new ArrayList<>();
 
@@ -93,25 +101,58 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	public abstract void setDataSet(DataSet<E, T> dataSet);
 
 	public Graph() {
-		FontLoader.init();
+		fontLoader.init();
 		this.setLayout(new BorderLayout());
 		add(drawingPanel, BorderLayout.CENTER);
-		add(legend, BorderLayout.EAST);
 		this.setBackground(backgroundColor);
-	}
-
-	public void setAA(boolean b) {
-		antiAliasing = b;
 	}
 
 	public void setPrcntMargin(double d) {
 		prcntMargin = d;
+		updated();
 	}
 
-	public void setLegendTransparency(double d) {// TODO Set
-													// transparency
-		final double val = assertInRange(d, 0, 1);
+	public void setTitleFontSize(float f) {
+		fontLoader.setTitleFontSize(f);
+		repaint();
+	}
 
+	public void setSubTitleFontSize(float f) {
+		fontLoader.setSubTitleFontSize(f);
+		repaint();
+	}
+
+	public void setTextFontSize(float f) {
+		fontLoader.setTextFontSize(f);
+		repaint();
+	}
+
+	public void setLabelFontSize(float f) {
+		fontLoader.setLabelFontSize(f);
+		repaint();
+	}
+
+	public void setFont(Font f) {
+		if (fontLoader != null) {
+			fontLoader.setFont(f);
+		}
+		super.setFont(f);
+		changeFont(this, f);
+	}
+
+	public void changeFont(Component component, Font font) {
+		if (component != this) {
+			component.setFont(font);
+		}
+		if (component instanceof Container) {
+			for (Component child : ((Container) component).getComponents()) {
+				changeFont(child, font);
+			}
+		}
+	}
+
+	public void setLegendTransparency(double d) {
+		getLegend().setAlphaComponent(assertInRange(d, 0, 1));
 	}
 
 	public DataSet<E, T> getDataSet() {
@@ -123,7 +164,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	}
 
 	public void setTransparency(double d) {
-		alpha = utils.ColorGenerator.convertToRGB(assertInRange(0, 1, d));
+		alpha = utils.ColorGenerator.convertTo8Bit(assertInRange(0, 1, d));
 	}
 
 	protected double assertInRange(double a, double b, double d) {
@@ -132,34 +173,73 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		return d > max ? max : d < min ? min : d;
 	}
 
+	/**
+	 * Since legend needs a reference to this, and can't initialise legend
+	 * before this is created, used this method instead of accessing legend
+	 * directly to ensure it is initialised
+	 */
+	private Legend getLegend() {
+		if (legend == null) {
+			legend = new Legend(this);
+			legendContainer.add(legend);
+			add(legendContainer, BorderLayout.EAST);
+		}
+		legend.setVisible(legendVisible);
+		return legend;
+	}
+	
+	public void legendLeftSide() {
+		remove(legendContainer);
+		add(legendContainer, BorderLayout.WEST);
+		revalidate();
+	}
+	
+	public void legendRightSide() {
+		remove(legendContainer);
+		add(legendContainer, BorderLayout.EAST);
+		revalidate();
+	}
+
+	public void setLegendVisible(boolean b) {
+		legend.setVisible((legendVisible = b));
+	}
+
 	public void setLegendTitle(String title) {
-		legend.setTitle(title);
-		updated();
+		setLegendVisible(true);
+		getLegend().setTitle(title);
 	}
 
+	@SuppressWarnings("unchecked")
 	public void setSeriesNames(ArrayList<String> s) {
-		if (s.size() < dataSet.getDependent().size()) {
-			throw new IllegalArgumentException("Not enough series names, needed: " + dataSet.getDependent().size()
-					+ ", received " + s.size());
-		}
-		this.seriesNames = new ArrayList<>(s.subList(0, dataSet.getDependent().size()));
-		legend.setSeriesNames(seriesNames);
+		setLegendVisible(true);
+		this.seriesNames = (ArrayList<String>) s.clone();
 		updated();
 	}
 
+	@SuppressWarnings("unchecked")
 	public void setSeriesColors(ArrayList<Color> colors) {
-		if (colors.size() < dataSet.getDependent().size()) {
-			throw new IllegalArgumentException("Not enough colors, needed: " + dataSet.getDependent().size() + ", received "
-					+ colors.size());
-		}
-		this.seriesColors = new ArrayList<>(colors.subList(0, dataSet.getDependent().size()));
-		manualColors = true;
+		setLegendVisible(true);
+		this.seriesColors = (ArrayList<Color>) colors.clone();
+		autoColors = false;
 		updated();
 	}
 
 	public void autoColors() {
-		manualColors = false;
+		if (autoColors) {
+			return;
+		}
+		seriesColors = new ArrayList<>();
+		autoColors = true;
 		updated();
+		repaint();
+	}
+	
+	public void setLegendBackgroundColor(Color c) {
+		getLegend().setBackgroundColor(c);
+	}
+
+	FontLoader getFontLoader() {
+		return fontLoader;
 	}
 
 	protected boolean closeEnough(double a, double b) {
@@ -171,44 +251,58 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 			convertPoints();
 		}
 		numSeries = dataSet.getDependent().size();
-		if (!manualColors) {
-			if (numSeries > seriesColors.size()) {
-				int sz = numSeries - seriesColors.size();
-				for (int i = 0; i < sz; i++) {
-					seriesColors.add(ColorGenerator.getColor(alpha));
-				}
+		boolean modified = false;
+		if (numSeries > seriesColors.size()) {
+			int sz = numSeries - seriesColors.size();
+			for (int i = 0; i < sz; i++) {
+				seriesColors.add(ColorGenerator.getColor(alpha));
 			}
-		}
-		if (numSeries < seriesColors.size()) {
+			getLegend().setSeriesColors(seriesColors);
+			modified = true;
+		} else if (numSeries < seriesColors.size()) {
 			int sz = seriesColors.size() - numSeries;
 			for (int i = 0; i < sz; i++) {
 				seriesColors.remove(seriesColors.size() - 1);
 			}
+			getLegend().setSeriesColors(seriesColors);
+			modified = true;
 		}
-		if (numSeries < seriesNames.size()) {
+		if (numSeries > seriesNames.size()) {
+			int sz = numSeries - seriesNames.size();
+			for (int i = 0; i < sz; i++) {
+				seriesNames.add("Series - " + Integer.toString(seriesNames.size() + 1));
+			}
+			getLegend().setSeriesNames(seriesNames);
+			modified = true;
+		} else if (numSeries < seriesNames.size()) {
 			int sz = seriesNames.size() - numSeries;
 			for (int i = 0; i < sz; i++) {
 				seriesNames.remove(seriesNames.size() - 1);
 			}
+			getLegend().setSeriesNames(seriesNames);
+			modified = true;
+		}
+		if (modified) {
+			getLegend().revalidate();
 		}
 	}
 
 	public void setTitle(String title) {
 		removeOldLabel(this.title);
-		this.title = new DefaultLabel(title, SwingConstants.CENTER, DefaultLabel.TITLE);
+		this.title = new DefaultLabel(title, SwingConstants.CENTER, FontType.TITLE, fontLoader);
 		add(this.title, BorderLayout.NORTH);
 	}
 
 	public void setXLabel(String lbl) {
 		removeOldLabel(this.xLabel);
-		this.xLabel = new DefaultLabel(lbl, SwingConstants.CENTER, DefaultLabel.TEXT);
+		this.xLabel = new DefaultLabel(lbl, SwingConstants.CENTER, FontType.TEXT, fontLoader);
 		add(this.xLabel, BorderLayout.SOUTH);
 	}
 
 	public void setYLabel(String lbl) {
 		removeOldLabel(this.yLabel);
-		this.yLabel = new DefaultLabel(lbl, SwingConstants.CENTER, DefaultLabel.TEXT);
-		add(this.yLabel, BorderLayout.WEST);
+		this.yLabel = new DefaultLabel(lbl, SwingConstants.CENTER, FontType.TEXT, fontLoader);
+		add(this.yLabel, BorderLayout.WEST);       
 	}
 
 	protected void removeOldLabel(JLabel old) {
@@ -218,17 +312,13 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	}
 
 	protected void checkAA(Graphics2D g) {
-		if (antiAliasing) {
-			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-			g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
-			g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-			g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
-			g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-			g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-			g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-		} else {
-			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
-		}
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+		g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+		g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 	}
 
 	/*

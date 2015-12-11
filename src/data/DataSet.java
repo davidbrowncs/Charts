@@ -153,7 +153,7 @@ public final class DataSet<E, T extends Number> {
 		}
 		Collections.sort(functionIndexes);
 		for (int i = functionIndexes.get(functionIndexes.size() - 1); i >= 0; i--) {
-			depVars.remove(functionIndexes.get(i));
+			depVars.remove((int) functionIndexes.get(i));
 		}
 		functionIndexes.clear();
 		for (Function<E, T> f : functions) {
@@ -258,9 +258,11 @@ public final class DataSet<E, T extends Number> {
 			if (!SwingUtilities.isEventDispatchThread()) {
 				SwingUtilities.invokeLater(() -> {
 					o.updated();
+					o.repaint();
 				});
 			} else {
 				o.updated();
+				o.repaint();
 			}
 		}
 	}

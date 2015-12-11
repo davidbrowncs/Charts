@@ -2,34 +2,65 @@
 package graphs;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
 
 import javax.swing.JLabel;
+
+import fileHandling.FontLoader;
 
 public class DefaultLabel extends JLabel {
 	private static final long serialVersionUID = 2377995574299523154L;
 
-	public static final int TITLE = 0;
-	public static final int SUB_TITLE = 1;
-	public static final int TEXT = 2;
+	private FontType type;
+	private FontLoader fontLoader;
 
-	private int type;
-
-	protected DefaultLabel(String s, int i, int type) {
+	private static int idCounter = 0;
+	private int id = idCounter++;
+	
+	public DefaultLabel(String s, int i, FontType type, FontLoader loader) {
 		super(s, i);
+		this.fontLoader = loader;
 		this.type = type;
 		setup();
 	}
 
-	protected DefaultLabel(String s, int type) {
+	public DefaultLabel(String s, FontType type, FontLoader loader) {
 		super(s);
 		this.type = type;
+		this.fontLoader = loader;
 		setup();
 	}
 
-	protected DefaultLabel(int type) {
+	public DefaultLabel(FontType type, FontLoader loader) {
 		super();
 		this.type = type;
+		this.fontLoader = loader;
 		setup();
+	}
+
+	public void paintComponent(Graphics g) {
+		super.paintComponent(g);
+		Font f = g.getFont();
+		if (f != null) {
+			if (!getLoadedFont().equals(f)) {
+				setFont(getLoadedFont());
+			}
+		}
+	}
+
+	private Font getLoadedFont() {
+		switch (type) {
+			case TITLE:
+				return fontLoader.getTitleFont();
+			case SUB_TITLE:
+				return fontLoader.getSubTitleFont();
+			case TEXT:
+				return fontLoader.getTextFont();
+			case TINY:
+				return fontLoader.getLabelFont();
+		}
+		return null;
 	}
 
 	private void setup() {
@@ -40,14 +71,24 @@ public class DefaultLabel extends JLabel {
 
 		switch (type) {
 			case TITLE:
-				setFont(FontLoader.getTitleFont());
+				setFont(fontLoader.getTitleFont());
 			break;
 			case SUB_TITLE:
-				setFont(FontLoader.getSubTitleFont());
+				setFont(fontLoader.getSubTitleFont());
 			break;
 			case TEXT:
-				setFont(FontLoader.getTextFont());
+				setFont(fontLoader.getTextFont());
+			break;
+			case TINY:
+				setFont(fontLoader.getLabelFont());
 			break;
 		}
+	}
+
+	public enum FontType {
+		TITLE,
+		SUB_TITLE,
+		TEXT,
+		TINY;
 	}
 }
