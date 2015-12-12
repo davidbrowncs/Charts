@@ -31,10 +31,12 @@ public class ScatterGraph<E extends Number, T extends Number> extends Continuous
 	@Override
 	protected void drawGraph(Graphics2D g) {
 		g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_DEFAULT);
-		for (int i = 0, y = 0; i < yPlotPoints.size() / xPlotPoints.size(); i++) {
+		for (int i = 0; i < series.size(); i++) {
+//		for (int i = 0, y = 0; i < yPlotPoints.size() / xPlotPoints.size(); i++) {
 			Function<ShapeWrapper, java.awt.Shape> f = null;
 			final Shape shape = shapes.get(i % Shape.values().length);
-			Color color = seriesColors.get(i % seriesColors.size());
+			Color color = series.get(i).getColor();
+//			Color color = seriesColors.get(i % seriesColors.size());
 			g.setColor(color);
 			switch (shape) {
 				case SQUARE:
@@ -68,8 +70,8 @@ public class ScatterGraph<E extends Number, T extends Number> extends Continuous
 				break;
 			}
 
-			for (int j = 0; j < xPlotPoints.size(); j++, y++) {
-				java.awt.Shape tmpShape = f.apply(new ShapeWrapper(xPlotPoints.get(j), yPlotPoints.get(y)));
+			for (int j = 0; j < xPlotPoints.size(); j++) {
+				java.awt.Shape tmpShape = f.apply(new ShapeWrapper(xPlotPoints.get(j), series.get(i).getyPlotPoints().get(j)));
 				g.fill(tmpShape);
 			}
 		}

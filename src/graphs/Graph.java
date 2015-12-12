@@ -12,6 +12,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.util.ArrayList;
+import java.util.Objects;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -29,10 +30,13 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected static final double ZERO_FACTOR = Double.MIN_VALUE * Math.pow(10, 4);
 	protected static final int MAX_POW_10 = (int) Math.pow(10, 4);
 
+	protected boolean debug = utils.Debug.isDebug();
+
 	protected static int graphCounter = 0;
 	protected int id = graphCounter++;
 
 	protected DataSet<E, T> dataSet;
+	protected ArrayList<Series<T>> series = new ArrayList<>();
 
 	protected FontLoader fontLoader = new FontLoader();
 
@@ -43,7 +47,11 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		@Override
 		public void paintComponent(Graphics g1) {
 			Graphics2D g = (Graphics2D) g1;
-			updated();
+			super.paintComponent(g1);
+			if (debug) {
+				g.drawLine(this.getWidth() / 2, 0, this.getWidth() / 2, this.getHeight());
+				g.drawLine(0, this.getHeight() / 2, this.getWidth(), this.getHeight() / 2);
+			}
 			draw(g);
 		}
 	};
@@ -56,9 +64,12 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	// or mind data set val) + or - prcntMargin * axisPadding
 	protected double axisPadding = 0.3d;
 
-	protected Stroke stroke = new BasicStroke(1.5f);
-	protected Stroke axisStroke = new BasicStroke(1.0f);
-	protected Stroke gridLineStroke = new BasicStroke(1.0f);
+	protected static final Stroke DEFAULT_STROKE = new BasicStroke(1.0f);
+	protected static final Stroke DEFAULT_AXIS_STROKE = new BasicStroke(1.0f);
+	protected static final Stroke DEFAULT_GRID_LINE_STROKE = new BasicStroke(1.0f);
+
+	protected Stroke axisStroke = DEFAULT_AXIS_STROKE;
+	protected Stroke gridLineStroke = DEFAULT_GRID_LINE_STROKE;
 
 	/*********** Colours **********/
 
@@ -67,7 +78,6 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected static final Color DEFAULT_BACKGROUND_COLOR = UIManager.getColor("Panel.background");
 	protected static final Color DEFAULT_GRIDLINE_COLOR = new Color(176, 176, 176, 200);
 
-	protected Color strokeColor = DEFAULT_STROKE_COLOR;
 	protected Color axisStrokeColor = DEFAULT_AXIS_STROKE_COLOR;
 	protected Color backgroundColor = DEFAULT_BACKGROUND_COLOR;
 	protected Color gridLineColor = DEFAULT_GRIDLINE_COLOR;
@@ -76,23 +86,26 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	/************************* Swing vars *******************************/
 	protected JLabel title = null;
-	protected JLabel xLabel = null;
-	protected JLabel yLabel = null;
-	protected Legend legend = null;
+
+	protected String xLabel = null;
+	protected String yLabel = null;
+	// "Gap" between the axis lines and the axis labels
+	protected int axisLabelOffset = 10;
+
+	protected Legend<T> legend = null;
 	protected JPanel legendContainer = new JPanel();
 	protected boolean legendVisible = false;
 
 	protected Font font = null;
 
 	protected int numSeries = 0;
-	protected ArrayList<Color> seriesColors = new ArrayList<>();
 	protected boolean autoColors = true;
 
-	protected ArrayList<String> seriesNames = new ArrayList<>();
-
-	protected boolean debug = utils.Debug.isDebug();
-
 	protected abstract void draw(Graphics2D g);
+
+	protected abstract void drawXLabel(Graphics2D g);
+
+	protected abstract void drawYLabel(Graphics2D g);
 
 	protected abstract void drawGraph(Graphics2D g);
 
@@ -103,6 +116,10 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	public Graph() {
 		fontLoader.init();
 		this.setLayout(new BorderLayout());
+		legend = new Legend<T>(fontLoader);
+		legend.setVisible(legendVisible);
+		legendContainer.add(legend);
+		add(legendContainer, BorderLayout.EAST);
 		add(drawingPanel, BorderLayout.CENTER);
 		this.setBackground(backgroundColor);
 	}
@@ -114,21 +131,25 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	public void setTitleFontSize(float f) {
 		fontLoader.setTitleFontSize(f);
+		revalidate();
 		repaint();
 	}
 
 	public void setSubTitleFontSize(float f) {
 		fontLoader.setSubTitleFontSize(f);
+		revalidate();
 		repaint();
 	}
 
 	public void setTextFontSize(float f) {
 		fontLoader.setTextFontSize(f);
+		revalidate();
 		repaint();
 	}
 
 	public void setLabelFontSize(float f) {
 		fontLoader.setLabelFontSize(f);
+		revalidate();
 		repaint();
 	}
 
@@ -152,7 +173,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	}
 
 	public void setLegendTransparency(double d) {
-		getLegend().setAlphaComponent(assertInRange(d, 0, 1));
+		legend.setAlphaComponent(assertInRange(d, 0, 1));
 	}
 
 	public DataSet<E, T> getDataSet() {
@@ -161,10 +182,14 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	public void removeDataSet() {
 		this.dataSet = null;
+		updated();
+		repaint();
 	}
 
 	public void setTransparency(double d) {
 		alpha = utils.ColorGenerator.convertTo8Bit(assertInRange(0, 1, d));
+		updated();
+		repaint();
 	}
 
 	protected double assertInRange(double a, double b, double d) {
@@ -173,31 +198,20 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		return d > max ? max : d < min ? min : d;
 	}
 
-	/**
-	 * Since legend needs a reference to this, and can't initialise legend
-	 * before this is created, used this method instead of accessing legend
-	 * directly to ensure it is initialised
-	 */
-	private Legend getLegend() {
-		if (legend == null) {
-			legend = new Legend(this);
-			legendContainer.add(legend);
-			add(legendContainer, BorderLayout.EAST);
-		}
-		legend.setVisible(legendVisible);
-		return legend;
-	}
-
 	public void legendLeftSide() {
 		remove(legendContainer);
 		add(legendContainer, BorderLayout.WEST);
+		setLegendVisible(true);
 		revalidate();
+		repaint();
 	}
 
 	public void legendRightSide() {
 		remove(legendContainer);
 		add(legendContainer, BorderLayout.EAST);
+		setLegendVisible(true);
 		revalidate();
+		repaint();
 	}
 
 	public void setLegendVisible(boolean b) {
@@ -205,114 +219,219 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	}
 
 	public void setLegendTitle(String title) {
+		legend.setTitle(title);
 		setLegendVisible(true);
-		getLegend().setTitle(title);
+		revalidate();
+		repaint();
 	}
 
-	@SuppressWarnings("unchecked")
 	public void setSeriesNames(ArrayList<String> s) {
+		requireDataSet();
+		matchSeriesNames(s);
 		setLegendVisible(true);
-		this.seriesNames = (ArrayList<String>) s.clone();
-		updated();
-		getLegend().setSeriesNames(seriesNames);
-		repaint();
 	}
 
-	@SuppressWarnings("unchecked")
+	protected void matchSeriesNames(ArrayList<String> names) {
+		if (series.size() <= names.size()) {
+			for (int i = 0; i < series.size(); i++) {
+				series.get(i).setName(names.get(i));
+			}
+		} else if (series.size() > names.size()) {
+			for (int i = 0; i < names.size(); i++) {
+				series.get(i).setName(names.get(i));
+			}
+			for (int i = names.size(); i < series.size(); i++) {
+				series.get(i).setName("Series - " + series.size() + 1);
+			}
+		}
+		updateLegendNames();
+	}
+
+	protected void updateLegendNames() {
+		if (legend.updateSeriesNames()) {
+			repaint();
+		}
+	}
+
+	protected void matchSeriesColors(ArrayList<Color> colors) {
+		if (series.size() <= colors.size()) {
+			for (int i = 0; i < series.size(); i++) {
+				if (series.get(i).getColor() != colors.get(i)) {
+					series.get(i).setColor(colors.get(i));
+				}
+			}
+		} else if (colors.size() < series.size()) {
+			for (int i = 0; i < colors.size(); i++) {
+				if (series.get(i).getColor() != colors.get(i)) {
+					series.get(i).setColor(colors.get(i));
+				}
+			}
+			for (int i = colors.size(); i < series.size(); i++) {
+				series.get(i).setColor(ColorGenerator.getColor(alpha));
+			}
+		}
+		updateLegendColors();
+	}
+
+	protected void updateLegendColors() {
+		if (legend.updateSeriesColors()) {
+			repaint();
+		}
+	}
+
+	protected void requireDataSet() {
+		if (dataSet == null) {
+			throw new DataNotSetException("Data for graph not set");
+		}
+	}
+
 	public void setSeriesColors(ArrayList<Color> colors) {
-		this.seriesColors = (ArrayList<Color>) colors.clone();
-		autoColors = false;
 		updated();
-		getLegend().setSeriesColors(seriesColors);
-		repaint();
+		requireDataSet();
+		autoColors = false;
+		matchSeriesColors(colors);
 	}
 
+	public void setSeriesColor(Color c, int seriesNum) {
+		Objects.requireNonNull(c);
+		updated();
+		if (seriesNum < 0 || seriesNum >= series.size()) {
+			return;
+		}
+		series.get(seriesNum).setColor(c);
+		autoColors = false;
+		updateLegendColors();
+	}
+
+	public void setSeriesName(String text, int seriesNum) {
+		updated();
+		if (seriesNum < 0 || seriesNum >= series.size()) {
+			return;
+		}
+		setLegendVisible(true);
+		series.get(seriesNum).setName(text);
+		updateLegendNames();
+	}
+
+	/**
+	 * If colours have been assigned to the series in the graph, this method
+	 * will clear all the current colours assigned to data-series, and will
+	 * assign new ones from the ColorGenerator class.
+	 */
 	public void autoColors() {
 		if (autoColors) {
 			return;
 		}
-		seriesColors = new ArrayList<>();
+		matchSeriesColors(new ArrayList<Color>()); // Give it an empty list so
+													// it'll get colors from
+													// generator
 		autoColors = true;
-		updated();
 		repaint();
 	}
 
+	/**
+	 * Sets the background colour of the legend. The new colour will be derived
+	 * from the given colour with the current legend's alpha component. For
+	 * example, if the color {@code new Color(255, 255, 255, 255)} is given, and
+	 * the legend's alpha value is 150, the new colour of the legend will be
+	 * {@code new Color(255, 255, 255, 150)}.
+	 * 
+	 * @param c
+	 *            The colour to assign to the legend.
+	 */
 	public void setLegendBackgroundColor(Color c) {
-		getLegend().setBackgroundColor(c);
-	}
-
-	FontLoader getFontLoader() {
-		return fontLoader;
+		legend.setBackgroundColor(c);
 	}
 
 	protected boolean closeEnough(double a, double b) {
 		return Math.abs(a - b) < ZERO_FACTOR;
 	}
 
+	/**
+	 * Not necessary to ever call this. Used by the {@code DataSet} class to
+	 * update a graph once the dataset has been changed. If this method is
+	 * called, it will re-calculate the points to draw based on the graph's
+	 * dataset. It will also ensure that there is an appropriate number of
+	 * colours to draw series with, and will update the legend with these
+	 * colours too, if the legend is visible.
+	 */
 	public void updated() {
 		if (dataSet != null) {
 			convertPoints();
 		}
-		numSeries = dataSet.getDependent().size();
-		if (numSeries > seriesColors.size()) {
-			int sz = numSeries - seriesColors.size();
-			for (int i = 0; i < sz; i++) {
-				seriesColors.add(ColorGenerator.getColor(alpha));
-			}
-			getLegend().setSeriesColors(seriesColors);
-		} else if (numSeries < seriesColors.size()) {
-			int sz = seriesColors.size() - numSeries;
-			for (int i = 0; i < sz; i++) {
-				seriesColors.remove(seriesColors.size() - 1);
-			}
-			getLegend().setSeriesColors(seriesColors);
-		}
-		if (numSeries > seriesNames.size()) {
-			int sz = numSeries - seriesNames.size();
-			for (int i = 0; i < sz; i++) {
-				seriesNames.add("Series - " + Integer.toString(seriesNames.size() + 1));
-			}
-			getLegend().setSeriesNames(seriesNames);
-		} else if (numSeries < seriesNames.size()) {
-			int sz = seriesNames.size() - numSeries;
-			for (int i = 0; i < sz; i++) {
-				seriesNames.remove(seriesNames.size() - 1);
-			}
-			getLegend().setSeriesNames(seriesNames);
-		}
+		updateLegendColors();
+		updateLegendNames();
 	}
 
+	/**
+	 * Adds a title to the graph.
+	 * 
+	 * @param title
+	 *            Value of the new title.
+	 */
 	public void setTitle(String title) {
-		removeOldLabel(this.title);
+		if (this.title != null) {
+			remove(this.title);
+		}
 		this.title = new DefaultLabel(title, SwingConstants.CENTER, FontType.TITLE, fontLoader);
 		add(this.title, BorderLayout.NORTH);
+		revalidate();
+		repaint();
 	}
 
+	/**
+	 * Set a label to draw on the graph, labelling the y axis. drawn on under
+	 * the x-axis of the graph image. To remove a label once set, call
+	 * "setXLabel(null)" and it will be removed. Labels are off by default. Take
+	 * care that the label is not too long, as there is no text wrapping
+	 * implemented.
+	 * 
+	 * @param lbl
+	 *            The string To assign to be the x label
+	 */
 	public void setXLabel(String lbl) {
-		removeOldLabel(this.xLabel);
-		this.xLabel = new DefaultLabel(lbl, SwingConstants.CENTER, FontType.TEXT, fontLoader);
-		add(this.xLabel, BorderLayout.SOUTH);
+		xLabel = lbl;
+		repaint();
 	}
 
+	/**
+	 * Set a label to draw on the graph, labelling the y axis. This will be
+	 * rotated 270 or -90 degrees and drawn on the left hand side of the graph
+	 * image. To remove a label once set, call "setYLabel(null)" and it will be
+	 * removed. Labels are off by default. Take care that the label is not too
+	 * long, as there is no text wrapping implemented.
+	 * 
+	 * @param lbl
+	 *            The string To assign to be the y label
+	 */
 	public void setYLabel(String lbl) {
-		removeOldLabel(this.yLabel);
-		this.yLabel = new DefaultLabel(lbl, SwingConstants.CENTER, FontType.TEXT, fontLoader);
-		add(this.yLabel, BorderLayout.WEST);
+		yLabel = lbl;
+		repaint();
 	}
 
-	protected void removeOldLabel(JLabel old) {
-		if (old != null) {
-			remove(old);
-		}
+	/**
+	 * Used to set the percentage margin around the edge of the graph. Limited
+	 * to between 0.03 (3%) and 0.5(50%). Any given values outside this range
+	 * will be reset to within the range.
+	 * 
+	 * @param d
+	 *            The new value of the margin around the graph as a percentage
+	 */
+	public void setPercentMargin(double d) {
+		d = assertInRange(0.03, 0.5, d);
+		prcntMargin = d;
+		updated();
+		repaint();
 	}
 
+	// Set rendering hints
 	protected void checkAA(Graphics2D g) {
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setRenderingHint(RenderingHints.KEY_TEXT_LCD_CONTRAST, 150);
 		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
 		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
 		g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
 		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
 		g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 	}
 

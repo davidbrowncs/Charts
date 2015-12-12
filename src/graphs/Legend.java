@@ -1,8 +1,6 @@
 
 package graphs;
 
-import graphs.DefaultLabel.FontType;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -15,23 +13,32 @@ import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import net.miginfocom.swing.MigLayout;
+import fileHandling.FontLoader;
+import graphs.DefaultLabel.FontType;
 
 /**
  * This class is nowhere near finished and I will be changing it so that it
  * doesn't have to rely on miglayout
  * 
  */
-class Legend extends JPanel {
+class Legend<T extends Number> extends JPanel {
 	private static final long serialVersionUID = 5725435102513897890L;
 
 	private JLabel legendTitle = null;
-	private ArrayList<JLabel> dataSeries = new ArrayList<>();
-	private ArrayList<ColorBox> seriesColors = new ArrayList<>();
+
+	private List<Series<T>> series = null;
+
+	private ArrayList<JLabel> labels = new ArrayList<>();
+	private ArrayList<String> labelTexts = new ArrayList<>();
+
+	private ArrayList<ColorBox> colorBoxes = new ArrayList<>();
+	private ArrayList<Integer> colorboxColors = new ArrayList<>();
 
 	private final static String maxStringSize = "Long text sampleaaaaa";
 	private int maxLabelSize;
@@ -39,16 +46,19 @@ class Legend extends JPanel {
 	private Color backgroundColor = new Color(150, 150, 150, 0);
 	private int alpha = 0;
 
-	private Graph<?, ?> graph;
+	private FontLoader fontLoader;
 
-	Legend(Graph<?, ?> g) {
-		this.graph = g;
-		setLayout(new MigLayout("", "[][grow]", "[][]"));
+	Legend(FontLoader loader) {
+		this.fontLoader = loader;
+		setLayout(new MigLayout("", "[][grow]", "[][][][][][][][][]"));
 		setBackground(backgroundColor);
-
 		AffineTransform a = new AffineTransform();
 		FontRenderContext frc = new FontRenderContext(a, true, true);
-		maxLabelSize = (int) g.getFontLoader().getTextFont().getStringBounds(maxStringSize, frc).getWidth();
+		maxLabelSize = (int) fontLoader.getTextFont().getStringBounds(maxStringSize, frc).getWidth();
+	}
+
+	public void setSeries(ArrayList<Series<T>> series2) {
+		this.series = series2;
 	}
 
 	public void paintComponent(Graphics g1) {
@@ -60,66 +70,99 @@ class Legend extends JPanel {
 		g.setColor(backgroundColor);
 		g.fill(rect);
 		g.setColor(oldColor);
+
 	}
 
 	public void setBackgroundColor(Color c) {
 		backgroundColor = utils.ColorGenerator.convertToAlpha(c, alpha);
-		repaint();
+		this.repaint();
 	}
 
 	void setTitle(String s) {
 		if (legendTitle != null) {
 			remove(legendTitle);
 		}
-		for (JLabel l : dataSeries) {
-			remove(l);
-		}
-		for (ColorBox c : seriesColors) {
-			remove(c);
-		}
-		legendTitle = new DefaultLabel(s, FontType.SUB_TITLE, graph.getFontLoader());
+		removeAll();
+		legendTitle = new DefaultLabel(s, FontType.SUB_TITLE, fontLoader);
 		add(legendTitle, "cell 0 0 2 1,alignx left");
-
-		ArrayList<Color> c = new ArrayList<>();
-		for (ColorBox bx : seriesColors) {
-			c.add(bx.color);
+		if (series != null) {
+			updateSeriesNames();
+			updateSeriesColors();
 		}
-		ArrayList<String> newSeries = new ArrayList<>();
-		for (JLabel l : dataSeries) {
-			newSeries.add(l.getText());
-		}
-		setSeriesNames(newSeries);
-		setSeriesColors(c);
 	}
 
-	void setSeriesNames(ArrayList<String> series) {
-		for (JLabel l : dataSeries) {
+	boolean updateSeriesNames() {
+		if (series == null) {
+			return false;
+		}
+		int changeCounter = 0;
+		if (series.size() == labelTexts.size()) {
+			for (int i = 0; i < series.size(); i++) {
+				if (!labelTexts.get(i).equals(series.get(i).getName())) {
+					changeCounter++;
+				}
+			}
+		} else {
+			changeCounter = 1;
+		}
+		if (changeCounter == 0) {
+			return false;
+		}
+
+		for (JLabel l : labels) {
 			remove(l);
 		}
-		dataSeries.clear();
+		labels.clear();
+		labelTexts.clear();
 		int counter = legendTitle == null ? 0 : 1;
 		for (int i = 0; i < series.size(); i++, counter++) {
-			JLabel l = new DefaultLabel(series.get(i), FontType.TEXT, graph.getFontLoader());
+			JLabel l = new DefaultLabel(series.get(i).getName(), FontType.TEXT, fontLoader);
 			Font font = l.getFont();
 			l.setText("<html><body style=\fontFamily: " + font.getFamily() + "\" size =\"" + font.getSize() + "\"></font>"
 					+ l.getText() + "</html");
+			labelTexts.add(series.get(i).getName());
 			l.setMaximumSize(new Dimension(maxLabelSize, 1080));
-			dataSeries.add(l);
+			labels.add(l);
 			add(l, "cell 1 " + counter + ",alignx left");
 		}
+		 this.revalidate();
+		 this.repaint();
+		 return true;
 	}
 
-	void setSeriesColors(ArrayList<Color> colors) {
-		for (ColorBox c : this.seriesColors) {
+	boolean updateSeriesColors() {
+		if (series == null) {
+			return false;
+		}
+		int changeCounter = 0;
+		if (series.size() == colorboxColors.size()) {
+			for (int i = 0; i < series.size(); i++) {
+				if (series.get(i).getColor().getRGB() != colorboxColors.get(i)) {
+					changeCounter++;
+				}
+			}
+		} else {
+			changeCounter = 1;
+		}
+		if (changeCounter == 0) {
+			return false;
+		}
+
+		for (ColorBox c : colorBoxes) {
 			remove(c);
 		}
-		seriesColors.clear();
+		colorboxColors.clear();
+		colorBoxes.clear();
 		int counter = legendTitle == null ? 0 : 1;
-		for (int i = 0; i < colors.size(); i++, counter++) {
-			ColorBox c = new ColorBox(colors.get(i));
-			seriesColors.add(c);
-			add(c, "cell 0 " + counter + ",alignx center");
+		for (int i = 0; i < series.size(); i++, counter++) {
+			ColorBox c = new ColorBox(series.get(i).getColor());
+			colorBoxes.add(c);
+			colorboxColors.add(series.get(i).getColor().getRGB());
+			add(c, "cell 0 " + counter + " ,alignx center");
 		}
+		 this.revalidate();
+		 this.repaint();
+		 return true;
 	}
 
 	void setAlphaComponent(double a) {
@@ -132,11 +175,12 @@ class Legend extends JPanel {
 		repaint();
 	}
 
-	public void changeAlpha(Component component, int alpha) {
+	@SuppressWarnings("unchecked")
+	private void changeAlpha(Component component, int alpha) {
 		if (component != this) {
 			component.setBackground(utils.ColorGenerator.convertToAlpha(component.getBackground(), alpha));
 		}
-		if (component instanceof ColorBox) {
+		if (component instanceof Legend.ColorBox) {
 			((ColorBox) component).color = utils.ColorGenerator.convertToAlpha(((ColorBox) component).color, alpha);
 		} else if (component instanceof Container) {
 			for (Component child : ((Container) component).getComponents()) {

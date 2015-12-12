@@ -81,7 +81,6 @@ public final class ColorGenerator {
 			return getColor();
 		} else {
 			Color c = colors.get(counter++ % colors.size());
-			System.out.println(c);
 			return c;
 		}
 	}

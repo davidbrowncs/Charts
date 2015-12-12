@@ -4,21 +4,21 @@ package graphs;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Stroke;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import utils.ColorGenerator;
 import utils.DoubleCheck;
 import data.DataSet;
-import fileHandling.FontLoader;
 
 public abstract class ContinuousGraph<E extends Number, T extends Number> extends Graph<E, T> {
 	private static final long serialVersionUID = 1805212588655879298L;
 
 	protected ArrayList<Double> xPlotPoints = new ArrayList<>();
-	protected ArrayList<Double> yPlotPoints = new ArrayList<>();
 
 	protected boolean xRangeAuto = true;
 	protected double xMinVal;
@@ -34,16 +34,16 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 	protected boolean drawXAxis = true;
 	protected boolean drawYAxis = true;
 
-	protected int numAxisLines = 9;
+	protected int numAxisLines = 10;
 	protected int axisLabelSize = 6;
 	protected boolean drawXLabels = true;
 	protected boolean drawYLabels = true;
 
 	protected boolean drawXGridLines = true;
-	protected int numXGridLines = 9;
+	protected int numXGridLines = 10;
 
 	protected boolean drawYGridLines = true;
-	protected int numYGridLines = 9;
+	protected int numYGridLines = 10;
 
 	public ContinuousGraph() {
 		super();
@@ -52,28 +52,41 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 	@Override
 	protected void convertPoints() {
 		xPlotPoints.clear();
-		yPlotPoints.clear();
+		for (Series<T> set : series) {
+			set.getyPlotPoints().clear();
+		}
 		process(dataSet.getIndependent(), xRangeAuto, xPlotPoints, false);
-		process(dataSet.getDependent(), yRangeAuto, yPlotPoints, true);
-	}
-
-	@SuppressWarnings("unchecked")
-	private void process(List<?> list, boolean auto, List<Double> processed, boolean invert) {
-		ArrayList<Double> all = new ArrayList<>();
-		if (!invert) {
-			for (Number n : (List<E>) list) {
-				all.add(n.doubleValue());
+		if (series.size() <= dataSet.getDependent().size()) {
+			for (int i = 0; i < series.size(); i++) {
+				series.get(i).setValues(dataSet.getDependent().get(i));
 			}
-		} else {
-			for (ArrayList<T> l : (List<ArrayList<T>>) list) {
-				for (Number n : l) {
-					all.add(n.doubleValue());
-				}
+			for (int i = series.size(); i < dataSet.getDependent().size(); i++) {
+				series.add(new Series<T>(dataSet.getDependent().get(i), "Series - " + (i + 1), DEFAULT_STROKE,
+						ColorGenerator.getColor(alpha)));
+			}
+		} else if (series.size() > dataSet.getDependent().size()) {
+			for (int i = series.size() - 1; i >= dataSet.getDependent().size(); i--) {
+				series.remove((int) i);
+			}
+			for (int i = 0; i < series.size(); i++) {
+				series.get(i).setValues(dataSet.getDependent().get(i));
 			}
 		}
 
+		for (int i = 0; i < dataSet.getDependent().size(); i++) {
+			process(series.get(i).getValues(), yRangeAuto, series.get(i).getyPlotPoints(), true);
+		}
+
+	}
+
+	private void process(List<? extends Number> list, boolean auto, List<Double> processed, boolean invert) {
+		ArrayList<Double> all = new ArrayList<>();
+		for (Number n : list) {
+			all.add(n.doubleValue());
+		}
+
 		double tmpMin = Double.MAX_VALUE;
-		double tmpMax = Double.MIN_VALUE;
+		double tmpMax = -Double.MAX_VALUE;
 		for (Double d : all) {
 			if (d < tmpMin && !Double.isInfinite(d) && !Double.isNaN(d)) {
 				tmpMin = d;
@@ -97,10 +110,13 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 						this.xMinVal = -1d;
 					}
 				} else {
-					this.xMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.003d ? 0 : tmpMin;
-					this.xMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math
-							.rint(tmpMax) : tmpMax;
+					this.xMinVal = tmpMin;
+					this.xMaxVal = tmpMax;
 				}
+
+				this.xMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.03d ? 0 : tmpMin;
+				this.xMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.03d ? Math
+						.rint(tmpMax) : tmpMax;
 			} else {
 				if (closeEnough(tmpMax, tmpMin)) {
 					if (!closeEnough(tmpMax, 0)) {
@@ -114,13 +130,20 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 						this.yMinVal = -1d;
 					}
 				} else {
-					this.yMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.003d ? 0 : tmpMin;
-					this.yMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.003d ? Math
-							.rint(tmpMax) : tmpMax;
+					this.yMinVal = tmpMin;
+					this.yMaxVal = tmpMax;
 				}
+				this.yMinVal = DoubleCheck.rangeDifferenceFactor(tmpMin, 0, tmpMax - tmpMin) < 0.03d ? 0 : tmpMin;
+				this.yMaxVal = DoubleCheck.rangeDifferenceFactor(tmpMax, Math.rint(tmpMax), tmpMax - tmpMin) < 0.03d ? Math
+						.rint(tmpMax) : tmpMax;
 			}
 		}
-		resize(all, processed, !invert);
+
+		hpad = null;
+		vpad = null;
+		for (Double d : all) {
+			processed.add(convert(d, !invert));
+		}
 	}
 
 	@Override
@@ -130,14 +153,7 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 			this.dataSet = dataSet;
 			dataSet.addObserver(this);
 			updated();
-		}
-	}
-
-	protected void resize(List<Double> vals, List<Double> processed, boolean horizontal) {
-		hpad = null;
-		vpad = null;
-		for (Double d : vals) {
-			processed.add(convert(d, horizontal));
+			legend.setSeries(series);
 		}
 	}
 
@@ -153,7 +169,11 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 		}
 		if (horizontal) {
 			if (hpad == null) {
-				hpad = (xMaxVal - xMinVal) * prcntMargin;
+				if (yLabel != null) {
+					hpad = (xMaxVal - xMinVal) * prcntMargin / 0.5d;
+				} else {
+					hpad = (xMaxVal - xMinVal) * prcntMargin;
+				}
 			}
 			double tmpXMin = xMinVal - hpad;
 			double tmpXMax = xMaxVal + hpad;
@@ -184,11 +204,11 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 	}
 
 	protected void drawXAxis(Graphics2D g) {
-		drawAxis(g, true);
+		drawAxis(g, false);
 	}
 
 	protected void drawYAxis(Graphics2D g) {
-		drawAxis(g, false);
+		drawAxis(g, true);
 	}
 
 	protected void drawAxis(Graphics2D g, boolean h) {
@@ -199,24 +219,15 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 		g.setColor(axisStrokeColor);
 		g.setStroke(axisStroke);
 
-		if (0d < (h ? xMinVal : yMinVal) && !closeEnough(0d, h ? xMinVal : yMinVal)) {
+		if (!zeroIsInRange(h)) {
 			return;
 		}
 		double loc = convert(0d, h);
 
-		double extra = axisPadding * prcntMargin;
-		double xExtra = (xMaxVal - xMinVal) * extra;
-		double yExtra = (yMaxVal - yMinVal) * extra;
+		double max = convert(h ? yMaxVal : xMaxVal, !h) + (h ? -15 : 15);
+		double min = convert(h ? yMinVal : xMinVal, !h) + (h ? 15 : -15);
 
-		double max = convert(h ? (yMaxVal + yExtra) : (xMaxVal + xExtra), !h);
-		double min = convert(h ? (yMinVal - yExtra) : (xMinVal - xExtra), !h);
-
-		Line2D.Double line;
-		if (h) {
-			line = new Line2D.Double(loc, min, loc, max);
-		} else {
-			line = new Line2D.Double(min, loc, max, loc);
-		}
+		Line2D.Double line = h ? new Line2D.Double(loc, min, loc, max) : new Line2D.Double(min, loc, max, loc);
 		g.draw(line);
 
 		g.setColor(prevColor);
@@ -246,38 +257,31 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 
 		double max = h ? xMaxVal : yMaxVal;
 		double min = h ? xMinVal : yMinVal;
-		double dif = (max - min) / (numAxisLines - 1d);
+		double dif = (max - min) / (numAxisLines);
 
-		double screenStart = h ? convert(yMinVal, false) : convert(xMinVal, true);
-		double screenEnd = h ? convert(yMaxVal, false) : convert(xMaxVal, true);
+		double screenStart = convert(h ? yMinVal : xMinVal, !h);
+		double screenEnd = convert(h ? yMaxVal : xMaxVal, !h);
 
 		if (!zeroIsInRange(h)) {
 			double current = min;
 			int num = h ? numXGridLines : numYGridLines;
-			if (h) {
-				for (int i = 0; i <= num; i++, current += dif) {
-					double val = convert(current, h);
-					Line2D.Double line = new Line2D.Double(val, screenStart, val, screenEnd);
-					g.draw(line);
-				}
-			} else {
-				for (int i = 0; i <= num; i++, current += dif) {
-					double val = convert(current, h);
-					Line2D.Double line = new Line2D.Double(screenStart, val, screenEnd, val);
-					g.draw(line);
-				}
+			for (int i = 0; i <= num; i++, current += dif) {
+				double val = convert(current, h);
+				Line2D.Double line = h ? new Line2D.Double(val, screenStart, val, screenEnd) : new Line2D.Double(
+						screenStart, val, screenEnd, val);
+				g.draw(line);
 			}
 		} else {
 			if (h) {
 				double current = 0;
-				while (current <= xMaxVal + 0.01d * dif) {
+				while (current <= max + 0.01d * dif) {
 					double val = convert(current, h);
 					Line2D.Double line = new Line2D.Double(val, screenStart, val, screenEnd);
 					g.draw(line);
 					current += dif;
 				}
 				current = 0 - dif;
-				while (current >= xMinVal - 0.01d * dif) {
+				while (current >= min - 0.01d * dif) {
 					double val = convert(current, h);
 					Line2D.Double line = new Line2D.Double(val, screenStart, val, screenEnd);
 					g.draw(line);
@@ -285,14 +289,14 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 				}
 			} else {
 				double current = 0;
-				while (current <= yMaxVal + 0.01d * dif) {
+				while (current <= max + 0.01d * dif) {
 					double val = convert(current, h);
 					Line2D.Double line = new Line2D.Double(screenStart, val, screenEnd, val);
 					g.draw(line);
 					current += dif;
 				}
 				current = 0 - dif;
-				while (current >= yMinVal - 0.01d * dif) {
+				while (current >= min - 0.01d * dif) {
 					double val = convert(current, h);
 					Line2D.Double line = new Line2D.Double(screenStart, val, screenEnd, val);
 					g.draw(line);
@@ -304,11 +308,7 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 	}
 
 	protected boolean zeroIsInRange(boolean h) {
-		if (h) {
-			return xMinVal < 0 && xMaxVal > 0;
-		} else {
-			return yMinVal < 0 && yMaxVal > 0;
-		}
+		return h ? xMinVal <= 0 && xMaxVal >= 0 : yMinVal <= 0 && yMaxVal >= 0;
 	}
 
 	protected void drawLabels(Graphics2D g, boolean h) {
@@ -324,7 +324,7 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 
 		ArrayList<Double> labelLocs = new ArrayList<>();
 		ArrayList<Double> vals = new ArrayList<>();
-		double dif = (max - min) / (numAxisLines - 1d);
+		double dif = (max - min) / (numAxisLines);
 		double current;
 		if (!zeroIsInRange(h)) {
 			current = min;
@@ -389,6 +389,40 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 		}
 	}
 
+	protected void drawXLabel(Graphics2D g) {
+		g.setFont(fontLoader.getTextFont());
+		double extra = axisPadding * prcntMargin;
+		double yExtra = (yMaxVal - yMinVal) * extra;
+		double min = convert(yMinVal - yExtra, false);
+		float x = (float) convert((xMaxVal - xMinVal) / 2 + xMinVal, true) - g.getFontMetrics().stringWidth(xLabel) / 2;
+		float y = (float) (min + axisLabelOffset + g.getFontMetrics().getHeight() / 2);
+		if (y > drawingPanel.getHeight() - 5) {
+			y = drawingPanel.getHeight() - 5;
+		}
+		g.drawString(xLabel, x, y);
+	}
+
+	protected void drawYLabel(Graphics2D g) {
+		g.setFont(fontLoader.getLabelFont());
+		double loc = convert(Math.min(xMinVal, 0d), true);
+		int place = (int) (loc - g.getFontMetrics().stringWidth("2222222") + g.getFontMetrics().getHeight());
+
+		g.setFont(fontLoader.getTextFont());
+
+		float x = place - g.getFontMetrics().getHeight();
+		if (x - g.getFontMetrics().getHeight() < 0) {
+			x = g.getFontMetrics().getHeight();
+		}
+
+		float y = (float) convert((yMaxVal - yMinVal) / 2 + yMinVal, false) + g.getFontMetrics().stringWidth(yLabel) / 2;
+
+		AffineTransform aff = g.getTransform();
+		g.translate(x, y);
+		g.rotate(Math.toRadians(-90));
+		g.drawString(yLabel, 0, 0);
+		g.setTransform(aff);
+	}
+
 	@Override
 	protected void draw(Graphics2D g) {
 		if (dataSet != null) {
@@ -396,8 +430,6 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 				updated();
 				g.setColor(backgroundColor);
 				checkAA(g);
-				g.setStroke(stroke);
-				g.setColor(strokeColor);
 				if (drawXGridLines) {
 					drawXGridLines(g);
 				}
@@ -417,37 +449,78 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 				if (drawYLabels) {
 					drawYLabels(g);
 				}
+				if (xLabel != null) {
+					drawXLabel(g);
+				}
+				if (yLabel != null) {
+					drawYLabel(g);
+				}
 			}
 		}
 	}
 
-	public void setAutoRangeX(boolean b) {
-		this.xRangeAuto = b;
+	public void setDrawXLabels(boolean b) {
+		drawXLabels = b;
+		repaint();
+	}
+
+	public void setDrawYLabels(boolean b) {
+		drawYLabels = b;
+		repaint();
+	}
+
+	public void setDrawHorizontalAxis(boolean b) {
+		drawXAxis = b;
+		repaint();
+	}
+
+	public void setDrawVerticalAxis(boolean b) {
+		drawYAxis = b;
+		repaint();
 	}
 
 	public void setXMin(double x) {
+		xRangeAuto = false;
 		xMinVal = x;
-		updated();
+		repaint();
 	}
 
 	public void setXMax(double x) {
+		xRangeAuto = false;
 		xMaxVal = x;
-		updated();
+		repaint();
 	}
 
 	public void setYMin(double y) {
+		yRangeAuto = false;
 		yMinVal = y;
-		updated();
+		repaint();
+	}
+	
+	public void autoCalculateXScale() {
+		xRangeAuto = true;
+		repaint();
+	}
+	
+	public void autoCalculateYScale() {
+		yRangeAuto = true;
+		repaint();
 	}
 
 	public void setYMax(double y) {
+		yRangeAuto = false;
 		yMaxVal = y;
-		updated();
+		repaint();
 	}
 
-	public void setAutoRangeY(boolean b) {
-		this.yRangeAuto = b;
-		updated();
+	public void drawVerticalGridLines(boolean b) {
+		drawXGridLines = b;
+		repaint();
+	}
+
+	public void drawHorizontalGridLines(boolean b) {
+		drawYGridLines = b;
+		repaint();
 	}
 
 	public boolean xRangeAuto() {
@@ -456,5 +529,16 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 
 	public boolean yRangeAuto() {
 		return yRangeAuto;
+	}
+
+	public static <E extends Number, T extends Number> LineGraph<E, T> newSimpleLineGraph(DataSet<E, T> d) {
+		LineGraph<E, T> graph = new LineGraph<>();
+		graph.setDataSet(d);
+		graph.drawPoints(false);
+		graph.setDrawXLabels(false);
+		graph.setDrawYLabels(false);
+		graph.drawVerticalGridLines(false);
+		graph.drawHorizontalGridLines(false);
+		return graph;
 	}
 }
