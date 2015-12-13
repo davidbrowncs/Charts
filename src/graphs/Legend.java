@@ -8,7 +8,9 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.RoundRectangle2D;
@@ -17,80 +19,220 @@ import java.util.List;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
 
-import net.miginfocom.swing.MigLayout;
+import utils.GraphicsAuxiliary;
 import fileHandling.FontLoader;
 import graphs.DefaultLabel.FontType;
 
 /**
- * This class is nowhere near finished and I will be changing it so that it
- * doesn't have to rely on miglayout
- * 
+ * Displays the legend data, i.e. a legend title, and the name given to
+ * different data series. An example might be "Class names" in a graph that
+ * displays all of the average grades across a school for a rather contrived
+ * example.
+ *
+ * @param <T>
+ *            Type of dependent data in the list of series', which stores
+ *            information about the dependent data. Has to be a number.
  */
 class Legend<T extends Number> extends JPanel {
 	private static final long serialVersionUID = 5725435102513897890L;
 
+	/**
+	 * Title for the legend
+	 */
 	private JLabel legendTitle = null;
 
+	/**
+	 * Reference to the series of data from the graph which has "this" legend.
+	 */
 	private List<Series<T>> series = null;
 
+	/**
+	 * References to the names of each series, used to remove the labels when
+	 * then ames of one or more data series changes.
+	 */
 	private ArrayList<JLabel> labels = new ArrayList<>();
+
+	/**
+	 * Stores the text in the above series labels. Used to compare the current
+	 * label texts against a new list of series names.
+	 */
 	private ArrayList<String> labelTexts = new ArrayList<>();
 
+	/**
+	 * Similar to {@code labels}, keeps references to the Color box panels so
+	 * they can be removed upon updating the colours for display data series'.
+	 */
 	private ArrayList<ColorBox> colorBoxes = new ArrayList<>();
+
+	/**
+	 * Stores the RGB value of the current color-boxes, used for comparison
+	 * against new colours.
+	 */
 	private ArrayList<Integer> colorboxColors = new ArrayList<>();
 
-	private final static String maxStringSize = "Long text sampleaaaaa";
+	/**
+	 * Used to calculate the maximum allowable with for a series name. The
+	 * length is arbitrary, it is just what seems a reasonable length of text to
+	 * reach before starting to wrap.
+	 */
+	private final static String MAX_STRING_SAMPLE = "Long text sampleaaaaa";
+
+	/**
+	 * "Pixel" value for the maximum allowable text width. Dependent upon the
+	 * font and the text used to calculate it. Pixel value calculated once from
+	 * the above text sample and cached.
+	 */
 	private int maxLabelSize;
 
-	private Color backgroundColor = new Color(150, 150, 150, 0);
+	/**
+	 * Alpha value for the background colour. Initialise to 0 so the background
+	 * is completely transparent.
+	 */
 	private int alpha = 0;
 
+	/**
+	 * Default background color, grey with an alpha component dependent on
+	 * {@code alpha}.
+	 */
+	private Color backgroundColor = new Color(150, 150, 150, alpha);
+
+	/**
+	 * Reference to the font loader from the legend's graph parent. Used to set
+	 * the fonts for the title and for the series names.
+	 */
 	private FontLoader fontLoader;
 
+	/**
+	 * Flag to indicate whether the user has specified series data or not. If
+	 * the user specifies series information, such as a series name or colour,
+	 * this will be set to true, if the user has not it is false. If they add
+	 * some information and then reset the graph back to using default or
+	 * automated names and colours, this is set back to false, to indicate not
+	 * to add labels to the legend upon updating.
+	 */
+	private boolean userSpecifiedSeriesInformation = false;
+
+	/**
+	 * Non public constructor since this is only a auxiliar class for a graph.
+	 * 
+	 * @param loader
+	 *            The loader from graph containing this legend.
+	 */
 	Legend(FontLoader loader) {
-		this.fontLoader = loader;
-		setLayout(new MigLayout("", "[][grow]", "[][][][][][][][][]"));
+
+		/* Window builder code */
+		GridBagLayout gridBagLayout = new GridBagLayout();
+		gridBagLayout.columnWidths = new int[] { 0, 0, 0 };
+		gridBagLayout.rowHeights = new int[] { 0, 0, 0, 0, 0 };
+		gridBagLayout.columnWeights = new double[] { 0.0, 1.0, Double.MIN_VALUE };
+		gridBagLayout.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
+		setLayout(gridBagLayout);
+		/* End of window builder code */
+
+		this.setBorder(new EmptyBorder(10, 10, 10, 10));
 		setBackground(backgroundColor);
-		AffineTransform a = new AffineTransform();
-		FontRenderContext frc = new FontRenderContext(a, true, true);
-		maxLabelSize = (int) fontLoader.getTextFont().getStringBounds(maxStringSize, frc).getWidth();
+		this.fontLoader = loader;
+
+		// Initialise and store the maximum allowable text width.
+		AffineTransform aff = new AffineTransform();
+		FontRenderContext fontRenderContext = new FontRenderContext(aff, true, true);
+		maxLabelSize = (int) fontLoader.getTextFont().getStringBounds(MAX_STRING_SAMPLE, fontRenderContext).getWidth();
 	}
 
-	public void setSeries(ArrayList<Series<T>> series2) {
-		this.series = series2;
+	/**
+	 * Not used too often. Since a graph can be initialised without a dataset,
+	 * we do not know when the series will be initialised by the graph. This is
+	 * called upon a user setting the dataset, and the list of series objects
+	 * being generated.
+	 * 
+	 * @param series
+	 *            The series to assign to this legend.
+	 */
+	void setSeries(ArrayList<Series<T>> series) {
+		this.series = series;
 	}
 
+	/**
+	 * (non-Javadoc)
+	 * 
+	 * @see javax.swing.JComponent#paintComponent(java.awt.Graphics)
+	 */
 	public void paintComponent(Graphics g1) {
-		Graphics2D g = (Graphics2D) g1;
+		Graphics2D g = (Graphics2D) g1.create();
 		super.paintComponent(g1);
-		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+		// Ensure the anti-aliasing properties are set properly
+		GraphicsAuxiliary.setupAA(g);
+
+		// Rounded corners rectangle
 		RoundRectangle2D.Double rect = new RoundRectangle2D.Double(0, 0, this.getWidth(), this.getHeight(), 25, 25);
 		Color oldColor = g.getColor();
 		g.setColor(backgroundColor);
 		g.fill(rect);
 		g.setColor(oldColor);
-
+		g.dispose();
 	}
 
-	public void setBackgroundColor(Color c) {
+	/**
+	 * Sets the background colour of the legend and causes it to be repainted
+	 * with the new colour. The new colour is derived from the given colour,
+	 * with its alpha component set to that of {@code this.alpha}.
+	 * 
+	 * @param c
+	 *            The new colour for the legend's background
+	 */
+
+	void setBackgroundColor(Color c) {
 		backgroundColor = utils.ColorGenerator.convertToAlpha(c, alpha);
 		this.repaint();
 	}
 
+	/**
+	 * Sets the title of the legend. First removes all components to ensure that
+	 * if series labels were set before specifying a title, the legend will be
+	 * added in the correct cell, then readds the components.
+	 * 
+	 * @param s
+	 *            Name to give to the title.
+	 */
 	void setTitle(String s) {
 		if (legendTitle != null) {
 			remove(legendTitle);
 		}
 		removeAll();
 		legendTitle = new DefaultLabel(s, FontType.SUB_TITLE, fontLoader);
-		add(legendTitle, "cell 0 0 2 1,alignx left");
-		if (series != null) {
+
+		/* Window builder code */
+		GridBagConstraints gbc_lblNewLabel = new GridBagConstraints();
+		gbc_lblNewLabel.gridwidth = 2;
+		gbc_lblNewLabel.insets = new Insets(0, 0, 5, 5);
+		gbc_lblNewLabel.gridx = 0;
+		gbc_lblNewLabel.gridy = 0;
+		add(legendTitle, gbc_lblNewLabel);
+		/* End window builder code */
+
+		/*
+		 * Only add series details if the series has been initialised and user
+		 * has set series data
+		 */
+		if (series != null && userSpecifiedSeriesInformation) {
 			updateSeriesNames();
 			updateSeriesColors();
 		}
 	}
 
+	/**
+	 * Try to update the series labels if the series list has been updated.
+	 * First checks if the names in the list of data-series are the same as they
+	 * are currently, if they are, return false to indicate nothing changed,
+	 * otherwise removeall the labels and add updated ones.
+	 * 
+	 * @return True if the labels were updated, false if not (the ones in the
+	 *         series are the same as the labels currently added to the legend,
+	 *         or the user has not specified series names or colours.)
+	 */
 	boolean updateSeriesNames() {
 		if (series == null) {
 			return false;
@@ -112,59 +254,140 @@ class Legend<T extends Number> extends JPanel {
 		for (JLabel l : labels) {
 			remove(l);
 		}
+		if (!userSpecifiedSeriesInformation) {
+			return false;
+		}
 		labels.clear();
 		labelTexts.clear();
 		int counter = legendTitle == null ? 0 : 1;
+
+		boolean needUpdatedColors = false;
 		for (int i = 0; i < series.size(); i++, counter++) {
-			JLabel l = new DefaultLabel(series.get(i).getName(), FontType.TEXT, fontLoader);
+			String name = series.get(i).getName();
+			if (name == null) {
+				// If the name is null, indicates that it needs to be removed,
+				// so a colour box should not be added
+				needUpdatedColors = true;
+				continue;
+			}
+			JLabel l = new DefaultLabel(name, FontType.TEXT, fontLoader);
 			Font font = l.getFont();
+			// Add html for wrapping
 			l.setText("<html><body style=\fontFamily: " + font.getFamily() + "\" size =\"" + font.getSize() + "\"></font>"
 					+ l.getText() + "</html");
-			labelTexts.add(series.get(i).getName());
-			l.setMaximumSize(new Dimension(maxLabelSize, 1080));
+			labelTexts.add(name);
+			// Force it to wrap upon exceeding the maximum size, don't really
+			// care what it's maximum height is.
+			l.setMaximumSize(new Dimension(maxLabelSize, Integer.MAX_VALUE));
 			labels.add(l);
-			add(l, "cell 1 " + counter + ",alignx left");
+
+			/* Window builder code */
+			GridBagConstraints gbc_lblNewLabel_1 = new GridBagConstraints();
+			gbc_lblNewLabel_1.insets = new Insets(0, 0, 5, 0);
+			gbc_lblNewLabel_1.gridx = 1;
+			gbc_lblNewLabel_1.gridy = counter;
+			add(l, gbc_lblNewLabel_1);
+			/* End window builder code */
 		}
-		 this.revalidate();
-		 this.repaint();
-		 return true;
+		internalUpdateSeriesColors(needUpdatedColors);
+		this.revalidate();
+		this.repaint();
+		return true;
 	}
 
-	boolean updateSeriesColors() {
-		if (series == null) {
-			return false;
-		}
-		int changeCounter = 0;
-		if (series.size() == colorboxColors.size()) {
-			for (int i = 0; i < series.size(); i++) {
-				if (series.get(i).getColor().getRGB() != colorboxColors.get(i)) {
-					changeCounter++;
-				}
-			}
-		} else {
-			changeCounter = 1;
-		}
-		if (changeCounter == 0) {
-			return false;
-		}
+	/**
+	 * Set the flag indicating whether the user has specified series
+	 * meta-information or not.
+	 * 
+	 * @param b
+	 *            The flag value to set {@code userSpecifiedSeriesInformation}
+	 *            to.
+	 */
+	void setUserSpecifiedInformation(boolean b) {
+		userSpecifiedSeriesInformation = b;
+	}
 
+	/**
+	 * Called when meta-information has been updated in the graph, either
+	 * colours changed or a series name changed. Calls the "internal" version of
+	 * this method, with the false flag to indicate that this was called
+	 * externally.
+	 * 
+	 * @return True if the series information was updated, false if not, or if
+	 *         the user has not allowed information to be displayed in the
+	 *         legend.
+	 */
+	boolean updateSeriesColors() {
+		return internalUpdateSeriesColors(false);
+	}
+
+	// Flag indicates whether this was called by legend or by the graph, if it
+	// was called internally skip the checking phase
+	/**
+	 * 
+	 * @param b
+	 * @return
+	 */
+	private boolean internalUpdateSeriesColors(boolean b) {
+		if (!b) { // If external, do checks, else skip
+			if (series == null) {
+				return false;
+			}
+			int changeCounter = 0;
+			if (series.size() == colorboxColors.size()) {
+				for (int i = 0; i < series.size(); i++) {
+					if (series.get(i).getColor().getRGB() != colorboxColors.get(i)) {
+						changeCounter++;
+					}
+				}
+			} else {
+				changeCounter = 1;
+			}
+			if (changeCounter == 0) {
+				return false;
+			}
+		}
 		for (ColorBox c : colorBoxes) {
 			remove(c);
+		}
+		if (!userSpecifiedSeriesInformation) {
+			return false;
 		}
 		colorboxColors.clear();
 		colorBoxes.clear();
 		int counter = legendTitle == null ? 0 : 1;
 		for (int i = 0; i < series.size(); i++, counter++) {
+			if (series.get(i).getName() == null) {
+				continue;
+			}
 			ColorBox c = new ColorBox(series.get(i).getColor());
 			colorBoxes.add(c);
 			colorboxColors.add(series.get(i).getColor().getRGB());
-			add(c, "cell 0 " + counter + " ,alignx center");
+
+			/* Window builder code */
+			GridBagConstraints gbc_panel = new GridBagConstraints();
+			gbc_panel.insets = new Insets(0, 0, 5, 5);
+			gbc_panel.fill = GridBagConstraints.BOTH;
+			gbc_panel.gridx = 0;
+			gbc_panel.gridy = counter;
+			add(c, gbc_panel);
+			/* End window builder code */
 		}
-		 this.revalidate();
-		 this.repaint();
-		 return true;
+		this.revalidate();
+		this.repaint();
+		return true;
 	}
 
+	/**
+	 * Sets the alpha component for the background colour, and also sets all the
+	 * background colours of children components to use this new alpha value.
+	 * This value needs to be between 0 and 1, as it will be multiplied by 255
+	 * to obtain the 8-bit value. Also causes the legend to be repainted.
+	 * 
+	 * @param a
+	 *            The "factor" by which to multiply 255 by to obtain a new alpha
+	 *            value for the background colour.
+	 */
 	void setAlphaComponent(double a) {
 		int nv = utils.ColorGenerator.convertTo8Bit(a);
 		if (nv != alpha) {
@@ -189,11 +412,18 @@ class Legend<T extends Number> extends JPanel {
 		}
 	}
 
+	/**
+	 * Auxiliary class for drawing coloured boxes, to indicate which series is
+	 * being drawn with which colour.
+	 */
 	private class ColorBox extends JPanel {
 		private static final long serialVersionUID = 5732330488332905113L;
-		private int width = 15;
-		private int height = 15;
-		boolean resize = false;
+
+		/**
+		 * Width and height of the box to be drawn.
+		 */
+		private final int width = 15;
+		private final int height = 15;
 		private Color color;
 
 		private ColorBox(Color c) {
@@ -203,18 +433,13 @@ class Legend<T extends Number> extends JPanel {
 
 		@Override
 		protected void paintComponent(Graphics g) {
-			super.paintComponent(g);
 			int hc = this.getWidth() / 2;
 			int vc = this.getHeight() / 2;
 
 			g.setColor(color);
-			if (!resize) {
-				int x = hc - (width / 2);
-				int y = vc - (height / 2);
-				g.fillRect(x, y, width, height);
-			} else {
-				g.fillRect(-width / 2, -height / 2, width, height);
-			}
+			int x = hc - (width / 2);
+			int y = vc - (height / 2);
+			g.fillRect(x, y, width, height);
 		}
 	}
 }

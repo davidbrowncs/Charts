@@ -19,21 +19,23 @@ public class GraphTesting {
 		DataSet<Double, Double> d = new DataSet<>();
 		ArrayList<Double> xVals = new ArrayList<>();
 		d.addFunction(x -> {
-			return x + Math.log(x);
+			return x / 5d + Math.sin(x);
 		});
 
 		Random rand = new Random();
-		for (double i = 0; i <= 11; i += 0.01d) {
+		for (double i = -10; i <= 11; i += 0.01d) {
 			xVals.add(i);
 		}
 		d.setInd(xVals);
 
 		SwingUtilities.invokeLater(() -> {
-			JFrame frame = new JFrame();
+			JFrame frame = new JFrame("Graph example");
 			g = new AreaLineGraph<>();
 			g.setDataSet(d);
 			g.drawPoints(false);
-			g.setLegendTransparency(0.7d);
+			g.setTitle("Hey look");
+//			g.setLegendTitle("Legend");
+			g.setSeriesName("Series 1", 0);
 			g.setPreferredSize(new Dimension(1000, 1000));
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			frame.add(g);

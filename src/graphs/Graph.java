@@ -9,7 +9,6 @@ import java.awt.Container;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -227,6 +226,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	public void setSeriesNames(ArrayList<String> s) {
 		requireDataSet();
+		legend.setUserSpecifiedInformation(true);
 		matchSeriesNames(s);
 		setLegendVisible(true);
 	}
@@ -244,6 +244,14 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 				series.get(i).setName("Series - " + series.size() + 1);
 			}
 		}
+		int count = 0;
+		for (int i = 0; i < series.size(); i++) {
+			String s = series.get(i).getName();
+			if (s == null) {
+				count++;
+			}
+		}
+		legend.setUserSpecifiedInformation(count == series.size());
 		updateLegendNames();
 	}
 
@@ -288,6 +296,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	public void setSeriesColors(ArrayList<Color> colors) {
 		updated();
 		requireDataSet();
+		legend.setUserSpecifiedInformation(true);
 		autoColors = false;
 		matchSeriesColors(colors);
 	}
@@ -298,6 +307,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		if (seriesNum < 0 || seriesNum >= series.size()) {
 			return;
 		}
+		legend.setUserSpecifiedInformation(true);
 		series.get(seriesNum).setColor(c);
 		autoColors = false;
 		updateLegendColors();
@@ -308,6 +318,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		if (seriesNum < 0 || seriesNum >= series.size()) {
 			return;
 		}
+		legend.setUserSpecifiedInformation(true);
 		setLegendVisible(true);
 		series.get(seriesNum).setName(text);
 		updateLegendNames();
@@ -422,17 +433,6 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		prcntMargin = d;
 		updated();
 		repaint();
-	}
-
-	// Set rendering hints
-	protected void checkAA(Graphics2D g) {
-		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		g.setRenderingHint(RenderingHints.KEY_TEXT_LCD_CONTRAST, 150);
-		g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
-		g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-		g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
-		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-		g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 	}
 
 	/*

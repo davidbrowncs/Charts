@@ -13,6 +13,7 @@ import java.util.Objects;
 
 import utils.ColorGenerator;
 import utils.DoubleCheck;
+import utils.GraphicsAuxiliary;
 import data.DataSet;
 
 public abstract class ContinuousGraph<E extends Number, T extends Number> extends Graph<E, T> {
@@ -212,7 +213,7 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 	}
 
 	protected void drawAxis(Graphics2D g, boolean h) {
-		checkAA(g);
+		GraphicsAuxiliary.setupAA(g);
 		Color prevColor = g.getColor();
 		Stroke previousStroke = g.getStroke();
 
@@ -429,7 +430,7 @@ public abstract class ContinuousGraph<E extends Number, T extends Number> extend
 			if (dataSet.getIndependent().size() != 0 && dataSet.getDependent().size() != 0) {
 				updated();
 				g.setColor(backgroundColor);
-				checkAA(g);
+				GraphicsAuxiliary.setupAA(g);
 				if (drawXGridLines) {
 					drawXGridLines(g);
 				}
