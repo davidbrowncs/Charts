@@ -1,22 +1,23 @@
 
 package examples;
 
+import graphs.ScatterGraph;
+import graphs.ScatterGraph.Shape;
+
 import java.awt.Color;
 import java.util.ArrayList;
 
 import javax.swing.SwingUtilities;
 
 import utils.ColorGenerator;
-import graphs.ScatterGraph;
-import graphs.ScatterGraph.Shape;
-import data.DataSet;
+import data.ContinuousDataSet;
 
 public class ScatterGraphExample {
 
 	public static void main(String[] args) {
 		// DataSet object, stores an independent dataset and can store many
 		// dependent datasets
-		DataSet<Double, Double> d = new DataSet<>();
+		ContinuousDataSet d = new ContinuousDataSet();
 
 		// Doesn't matter if functions are added after the independent data set
 		d.addFunction(x -> {
@@ -34,17 +35,17 @@ public class ScatterGraphExample {
 		for (double y = -5; y < 5; y += 0.25) {
 			nonFunctionResults.add(y);
 		}
-		d.addDep(nonFunctionResults);
+		d.addDependentSet(nonFunctionResults);
 
 		ArrayList<Double> xVals = new ArrayList<>();
 		for (double i = -5; i < 5; i += 0.25) {
 			xVals.add(i);
 		}
-		d.setInd(xVals);
+		d.setIndependent(xVals);
 
 		// Graphs extend JPanels so need to treat them like a swing object still
 		SwingUtilities.invokeLater(() -> {
-			ScatterGraph<Double, Double> g = new ScatterGraph<Double, Double>();
+			ScatterGraph g = new ScatterGraph();
 			g.setDataSet(d);
 			g.setTitle("Scatter Graph Example");
 

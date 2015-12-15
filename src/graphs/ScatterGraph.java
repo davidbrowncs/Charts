@@ -3,16 +3,16 @@ package graphs;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.function.Function;
 
-public class ScatterGraph<E extends Number, T extends Number> extends ContinuousGraph<E, T> {
+public class ScatterGraph extends ContinuousGraph {
 
 	private static final long serialVersionUID = -2096068392172639822L;
 
@@ -32,11 +32,12 @@ public class ScatterGraph<E extends Number, T extends Number> extends Continuous
 	protected void drawGraph(Graphics2D g) {
 		g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_DEFAULT);
 		for (int i = 0; i < series.size(); i++) {
-//		for (int i = 0, y = 0; i < yPlotPoints.size() / xPlotPoints.size(); i++) {
+			// for (int i = 0, y = 0; i < yPlotPoints.size() /
+			// xPlotPoints.size(); i++) {
 			Function<ShapeWrapper, java.awt.Shape> f = null;
 			final Shape shape = shapes.get(i % Shape.values().length);
 			Color color = series.get(i).getColor();
-//			Color color = seriesColors.get(i % seriesColors.size());
+			// Color color = seriesColors.get(i % seriesColors.size());
 			g.setColor(color);
 			switch (shape) {
 				case SQUARE:
@@ -51,27 +52,35 @@ public class ScatterGraph<E extends Number, T extends Number> extends Continuous
 				break;
 				case TRIANGLE:
 					f = s -> {
-						int[] xPoints = new int[3];
-						int[] yPoints = new int[3];
-						double sz = shapeSize / 2;
-						xPoints[0] = (int) (s.x - sz);
-						xPoints[1] = (int) (s.x + sz);
-						xPoints[2] = (int) s.x;
+						double sz = shapeSize * 2d / 3d;
+
+						Path2D.Double p = new Path2D.Double();
 
 						double h = Math.tan(30 * (Math.PI / 180)) * (sz * 2 / 2);
 						double w = sz * 2 * Math.sin(60 * Math.PI / 180) - h;
 
-						yPoints[0] = (int) (s.y + h);
-						yPoints[1] = (int) (s.y + h);
-						yPoints[2] = (int) (s.y - w);
-						int l = 3;
-						return new Polygon(xPoints, yPoints, l);
+						double x1 = s.x - sz;
+						double y1 = s.y + h;
+
+						double x2 = s.x + sz;
+						double y2 = s.y + h;
+
+						double x3 = s.x;
+						double y3 = s.y - w;
+
+						p.moveTo(x1, y1);
+						p.lineTo(x2, y2);
+						p.lineTo(x3, y3);
+						p.closePath();
+
+						return p;
 					};
 				break;
 			}
 
 			for (int j = 0; j < xPlotPoints.size(); j++) {
-				java.awt.Shape tmpShape = f.apply(new ShapeWrapper(xPlotPoints.get(j), series.get(i).getyPlotPoints().get(j)));
+				java.awt.Shape tmpShape = f
+						.apply(new ShapeWrapper(xPlotPoints.get(j), series.get(i).getyPlotPoints().get(j)));
 				g.fill(tmpShape);
 			}
 		}

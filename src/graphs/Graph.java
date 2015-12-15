@@ -19,11 +19,13 @@ import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
 import utils.ColorGenerator;
+import data.CategoricDataSet;
+import data.ContinuousDataSet;
 import data.DataSet;
 import fileHandling.FontLoader;
 import graphs.DefaultLabel.FontType;
 
-public abstract class Graph<E, T extends Number> extends JPanel {
+public abstract class Graph extends JPanel {
 	private static final long serialVersionUID = 9103378308225496616L;
 
 	protected static final double ZERO_FACTOR = Double.MIN_VALUE * Math.pow(10, 4);
@@ -34,8 +36,8 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected static int graphCounter = 0;
 	protected int id = graphCounter++;
 
-	protected DataSet<E, T> dataSet;
-	protected ArrayList<Series<T>> series = new ArrayList<>();
+	protected DataSet dataSet;
+	protected ArrayList<Series> series = new ArrayList<>();
 
 	protected FontLoader fontLoader = new FontLoader();
 
@@ -57,6 +59,9 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	/************************ Drawing vars ******************************/
 
+	/**
+	 * Percent of blank space to allocate around the graph
+	 */
 	protected double prcntMargin = 0.10d;
 
 	// Is multiplied by prcnt margin, so the amount extra for gridlines is (max
@@ -67,6 +72,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected static final Stroke DEFAULT_AXIS_STROKE = new BasicStroke(1.0f);
 	protected static final Stroke DEFAULT_GRID_LINE_STROKE = new BasicStroke(1.0f);
 
+	protected Stroke generalStroke = DEFAULT_STROKE;
 	protected Stroke axisStroke = DEFAULT_AXIS_STROKE;
 	protected Stroke gridLineStroke = DEFAULT_GRID_LINE_STROKE;
 
@@ -77,6 +83,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 	protected static final Color DEFAULT_BACKGROUND_COLOR = UIManager.getColor("Panel.background");
 	protected static final Color DEFAULT_GRIDLINE_COLOR = new Color(176, 176, 176, 200);
 
+	protected Color generalStrokeColor = DEFAULT_STROKE_COLOR;
 	protected Color axisStrokeColor = DEFAULT_AXIS_STROKE_COLOR;
 	protected Color backgroundColor = DEFAULT_BACKGROUND_COLOR;
 	protected Color gridLineColor = DEFAULT_GRIDLINE_COLOR;
@@ -88,41 +95,52 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 
 	protected String xLabel = null;
 	protected String yLabel = null;
+	
 	// "Gap" between the axis lines and the axis labels
 	protected int axisLabelOffset = 10;
 
-	protected Legend<T> legend = null;
+	protected Legend legend = null;
 	protected JPanel legendContainer = new JPanel();
 	protected boolean legendVisible = false;
 
-	protected Font font = null;
-
 	protected int numSeries = 0;
 	protected boolean autoColors = true;
-
-	protected abstract void draw(Graphics2D g);
 
 	protected abstract void drawXLabel(Graphics2D g);
 
 	protected abstract void drawYLabel(Graphics2D g);
 
 	protected abstract void drawGraph(Graphics2D g);
+	
+	protected abstract void draw(Graphics2D g);
 
 	protected abstract void convertPoints();
-
-	public abstract void setDataSet(DataSet<E, T> dataSet);
 
 	public Graph() {
 		fontLoader.init();
 		this.setLayout(new BorderLayout());
-		legend = new Legend<T>(fontLoader);
+		legend = new Legend(fontLoader);
 		legend.setVisible(legendVisible);
 		legendContainer.add(legend);
 		add(legendContainer, BorderLayout.EAST);
 		add(drawingPanel, BorderLayout.CENTER);
 		this.setBackground(backgroundColor);
 	}
-
+	
+	public void setDataSet(DataSet set) {
+		if (set instanceof ContinuousDataSet) {
+			setDataSet((ContinuousDataSet) set);
+		} else if (set instanceof CategoricDataSet) {
+			setDataSet((CategoricDataSet) set);
+		} else {
+			throw new UnsupportedOperationException();
+		}
+	}
+	
+	protected abstract void setDataSet(ContinuousDataSet dataSet);
+	
+	protected abstract void setDataSet(CategoricDataSet dataSet);
+	
 	public void setPrcntMargin(double d) {
 		prcntMargin = d;
 		updated();
@@ -175,7 +193,7 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 		legend.setAlphaComponent(assertInRange(d, 0, 1));
 	}
 
-	public DataSet<E, T> getDataSet() {
+	public DataSet getDataSet() {
 		return dataSet;
 	}
 
@@ -461,7 +479,6 @@ public abstract class Graph<E, T extends Number> extends JPanel {
 			return false;
 		if (!(obj instanceof Graph))
 			return false;
-		@SuppressWarnings("rawtypes")
 		Graph other = (Graph) obj;
 		if (id != other.id)
 			return false;

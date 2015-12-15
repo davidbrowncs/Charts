@@ -4,19 +4,18 @@ package graphs;
 import java.awt.Color;
 import java.awt.Stroke;
 import java.util.ArrayList;
-import java.util.Collection;
 
-public class Series<T extends Number> {
+public class Series {
 
 	private String seriesName;
 	private ArrayList<Double> yPlotPoints = new ArrayList<>();
-	private ArrayList<T> values = new ArrayList<>();
+	private ArrayList<Double> values = new ArrayList<>();
 	private boolean drawing = true;
 	private Stroke stroke;
 	private Color color;
 
-	public Series(Collection<T> vals, String name, Stroke s, Color c) {
-		values.addAll(vals);
+	public Series(ArrayList<Double> vals, String name, Stroke s, Color c) {
+		values = vals;
 		this.seriesName = name;
 		this.stroke = s;
 		this.color = c;
@@ -55,7 +54,7 @@ public class Series<T extends Number> {
 	/**
 	 * @return the values
 	 */
-	public ArrayList<T> getValues() {
+	public ArrayList<Double> getValues() {
 		return values;
 	}
 
@@ -63,7 +62,7 @@ public class Series<T extends Number> {
 	 * @param values
 	 *            the values to set
 	 */
-	public void setValues(ArrayList<T> values) {
+	public void setValues(ArrayList<Double> values) {
 		this.values = values;
 	}
 

@@ -35,7 +35,7 @@ import graphs.DefaultLabel.FontType;
  *            Type of dependent data in the list of series', which stores
  *            information about the dependent data. Has to be a number.
  */
-class Legend<T extends Number> extends JPanel {
+class Legend extends JPanel {
 	private static final long serialVersionUID = 5725435102513897890L;
 
 	/**
@@ -46,7 +46,7 @@ class Legend<T extends Number> extends JPanel {
 	/**
 	 * Reference to the series of data from the graph which has "this" legend.
 	 */
-	private List<Series<T>> series = null;
+	private List<Series> series = null;
 
 	/**
 	 * References to the names of each series, used to remove the labels when
@@ -121,7 +121,6 @@ class Legend<T extends Number> extends JPanel {
 	 *            The loader from graph containing this legend.
 	 */
 	Legend(FontLoader loader) {
-
 		/* Window builder code */
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[] { 0, 0, 0 };
@@ -150,7 +149,7 @@ class Legend<T extends Number> extends JPanel {
 	 * @param series
 	 *            The series to assign to this legend.
 	 */
-	void setSeries(ArrayList<Series<T>> series) {
+	void setSeries(ArrayList<Series> series) {
 		this.series = series;
 	}
 
@@ -283,6 +282,7 @@ class Legend<T extends Number> extends JPanel {
 
 			/* Window builder code */
 			GridBagConstraints gbc_lblNewLabel_1 = new GridBagConstraints();
+			gbc_lblNewLabel_1.anchor = GridBagConstraints.WEST;
 			gbc_lblNewLabel_1.insets = new Insets(0, 0, 5, 0);
 			gbc_lblNewLabel_1.gridx = 1;
 			gbc_lblNewLabel_1.gridy = counter;
@@ -398,7 +398,6 @@ class Legend<T extends Number> extends JPanel {
 		repaint();
 	}
 
-	@SuppressWarnings("unchecked")
 	private void changeAlpha(Component component, int alpha) {
 		if (component != this) {
 			component.setBackground(utils.ColorGenerator.convertToAlpha(component.getBackground(), alpha));

@@ -6,7 +6,7 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.util.ArrayList;
 
-public class LineGraph<E extends Number, T extends Number> extends ContinuousGraph<E, T> {
+public class LineGraph extends ContinuousGraph {
 	private static final long serialVersionUID = 830656033876679737L;
 
 	protected boolean drawPoints = true;
@@ -22,7 +22,7 @@ public class LineGraph<E extends Number, T extends Number> extends ContinuousGra
 	protected void drawGraph(Graphics2D g) {
 		Double xPrev = null;
 		Double yPrev = null;
-		for (Series<T> set : series) {
+		for (Series set : series) {
 			ArrayList<Double> yPlotPoints = set.getyPlotPoints();
 			xPrev = xPlotPoints.get(0);
 			yPrev = yPlotPoints.get(0);
