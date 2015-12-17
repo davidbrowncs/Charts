@@ -1,6 +1,10 @@
 
 package graphs;
 
+import graphs.DefaultLabel.FontType;
+import interfaces.DataModel;
+import interfaces.SwingObserver;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,36 +23,75 @@ import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
 import utils.ColorGenerator;
-import data.CategoricDataSet;
-import data.ContinuousDataSet;
-import data.DataSet;
-import fileHandling.FontLoader;
-import graphs.DefaultLabel.FontType;
+import utils.FontLoader;
 
-public abstract class Graph extends JPanel {
+/**
+ * Class specifying a lot of the meta-behaviour of a graph (colours, series
+ * names etc.) and the basic functionality of a graph.
+ * 
+ * @param <I>
+ *            The type of independent variable a graph inheriting from
+ *            {@code Graph} requires.
+ */
+public abstract class Graph<I> extends JPanel implements SwingObserver<I, Double> {
 	private static final long serialVersionUID = 9103378308225496616L;
 
+	/**
+	 * The number which if two double variables have a difference less than this
+	 * number, are considered to be equal.
+	 */
 	protected static final double ZERO_FACTOR = Double.MIN_VALUE * Math.pow(10, 4);
+
+	/**
+	 * The maximum power of ten allowable before a value being displayed on a
+	 * graph is truncated.
+	 */
 	protected static final int MAX_POW_10 = (int) Math.pow(10, 4);
 
+	/**
+	 * Flag to indicate whether debug mode is on or not.
+	 */
 	protected boolean debug = utils.Debug.isDebug();
 
+	/**
+	 * Keeps track of the number of graphs created.
+	 */
 	protected static int graphCounter = 0;
+
+	/**
+	 * ID of this graph. Used to distinguish between graphs via the
+	 * {@code equals} method. Assigned to the current value of
+	 * {@code graphCounter}, and then increments {@code graphCounter}.
+	 */
 	protected int id = graphCounter++;
 
-	protected DataSet dataSet;
+	/**
+	 * The datamodel this graph uses for drawing.
+	 */
+	protected DataModel<I, Double> dataModel;
+
+	/**
+	 * Collection of {@code Series}, where a series contains the meta
+	 * information for a series of dependent data, and also the plotting points
+	 * for that dependent data set.
+	 */
 	protected ArrayList<Series> series = new ArrayList<>();
 
+	/**
+	 * Instance of a font loader to get allowable fonts from.
+	 */
 	protected FontLoader fontLoader = new FontLoader();
 
-	// Graphs drawn to this, not the Graph panel itself
+	/**
+	 * The panel to use for drawing to.
+	 */
 	protected JPanel drawingPanel = new JPanel() {
 		private static final long serialVersionUID = -8697262090210209523L;
 
 		@Override
 		public void paintComponent(Graphics g1) {
-			Graphics2D g = (Graphics2D) g1;
 			super.paintComponent(g1);
+			Graphics2D g = (Graphics2D) g1;
 			if (debug) {
 				g.drawLine(this.getWidth() / 2, 0, this.getWidth() / 2, this.getHeight());
 				g.drawLine(0, this.getHeight() / 2, this.getWidth(), this.getHeight() / 2);
@@ -95,13 +138,16 @@ public abstract class Graph extends JPanel {
 
 	protected String xLabel = null;
 	protected String yLabel = null;
-	
+
 	// "Gap" between the axis lines and the axis labels
 	protected int axisLabelOffset = 10;
 
 	protected Legend legend = null;
+
 	protected JPanel legendContainer = new JPanel();
 	protected boolean legendVisible = false;
+
+	protected MetaTracker tracker = new MetaTracker();
 
 	protected int numSeries = 0;
 	protected boolean autoColors = true;
@@ -111,7 +157,7 @@ public abstract class Graph extends JPanel {
 	protected abstract void drawYLabel(Graphics2D g);
 
 	protected abstract void drawGraph(Graphics2D g);
-	
+
 	protected abstract void draw(Graphics2D g);
 
 	protected abstract void convertPoints();
@@ -126,25 +172,22 @@ public abstract class Graph extends JPanel {
 		add(drawingPanel, BorderLayout.CENTER);
 		this.setBackground(backgroundColor);
 	}
-	
-	public void setDataSet(DataSet set) {
-		if (set instanceof ContinuousDataSet) {
-			setDataSet((ContinuousDataSet) set);
-		} else if (set instanceof CategoricDataSet) {
-			setDataSet((CategoricDataSet) set);
-		} else {
-			throw new UnsupportedOperationException();
+
+	public void setDataModel(DataModel<I, Double> dataSet) {
+		if (!dataSet.equals(this.dataModel)) {
+			this.dataModel = dataSet;
+			dataSet.addObserver(this);
+			updated();
+			legend.setSeries(series);
 		}
 	}
-	
-	protected abstract void setDataSet(ContinuousDataSet dataSet);
-	
-	protected abstract void setDataSet(CategoricDataSet dataSet);
-	
+
 	public void setPrcntMargin(double d) {
 		prcntMargin = d;
 		updated();
 	}
+
+	/******************** Font changing methods **************/
 
 	public void setTitleFontSize(float f) {
 		fontLoader.setTitleFontSize(f);
@@ -178,7 +221,7 @@ public abstract class Graph extends JPanel {
 		changeFont(this, f);
 	}
 
-	public void changeFont(Component component, Font font) {
+	protected void changeFont(Component component, Font font) {
 		if (component != this) {
 			component.setFont(font);
 		}
@@ -189,31 +232,7 @@ public abstract class Graph extends JPanel {
 		}
 	}
 
-	public void setLegendTransparency(double d) {
-		legend.setAlphaComponent(assertInRange(d, 0, 1));
-	}
-
-	public DataSet getDataSet() {
-		return dataSet;
-	}
-
-	public void removeDataSet() {
-		this.dataSet = null;
-		updated();
-		repaint();
-	}
-
-	public void setTransparency(double d) {
-		alpha = utils.ColorGenerator.convertTo8Bit(assertInRange(0, 1, d));
-		updated();
-		repaint();
-	}
-
-	protected double assertInRange(double a, double b, double d) {
-		double max = Math.max(a, b);
-		double min = Math.min(a, b);
-		return d > max ? max : d < min ? min : d;
-	}
+	/*********************** Legend changing methods ****************************/
 
 	public void legendLeftSide() {
 		remove(legendContainer);
@@ -232,7 +251,7 @@ public abstract class Graph extends JPanel {
 	}
 
 	public void setLegendVisible(boolean b) {
-		legend.setVisible((legendVisible = b));
+		legend.setVisible(legendVisible = b);
 	}
 
 	public void setLegendTitle(String title) {
@@ -242,8 +261,52 @@ public abstract class Graph extends JPanel {
 		repaint();
 	}
 
+	protected void updateLegendNames() {
+		if (tracker.namesUpdated(series)) {
+			legend.updateSeriesNames();
+		}
+	}
+
+	protected void updateLegendColors() {
+		if (tracker.colorsUpdated(series)) {
+			legend.updateSeriesColors();
+			repaint();
+		}
+	}
+
+	/*********************************************************/
+
+	public void setLegendTransparency(double d) {
+		legend.setAlphaComponent(assertInRange(d, 0, 1));
+	}
+
+	public DataModel<I, Double> getDataModel() {
+		return dataModel;
+	}
+
+	public void updateDisplay() {
+		repaint();
+	}
+
+	public void removeDataModel() {
+		this.dataModel = null;
+		updated();
+		repaint();
+	}
+
+	public void setTransparency(double d) {
+		alpha = utils.ColorGenerator.convertTo8Bit(assertInRange(0, 1, d));
+		repaint();
+	}
+
+	protected double assertInRange(double a, double b, double d) {
+		double max = Math.max(a, b);
+		double min = Math.min(a, b);
+		return d > max ? max : d < min ? min : d;
+	}
+
 	public void setSeriesNames(ArrayList<String> s) {
-		requireDataSet();
+		Objects.requireNonNull(s);
 		legend.setUserSpecifiedInformation(true);
 		matchSeriesNames(s);
 		setLegendVisible(true);
@@ -273,12 +336,6 @@ public abstract class Graph extends JPanel {
 		updateLegendNames();
 	}
 
-	protected void updateLegendNames() {
-		if (legend.updateSeriesNames()) {
-			repaint();
-		}
-	}
-
 	protected void matchSeriesColors(ArrayList<Color> colors) {
 		if (series.size() <= colors.size()) {
 			for (int i = 0; i < series.size(); i++) {
@@ -299,31 +356,19 @@ public abstract class Graph extends JPanel {
 		updateLegendColors();
 	}
 
-	protected void updateLegendColors() {
-		if (legend.updateSeriesColors()) {
-			repaint();
-		}
-	}
-
-	protected void requireDataSet() {
-		if (dataSet == null) {
-			throw new DataNotSetException("Data for graph not set");
-		}
-	}
-
 	public void setSeriesColors(ArrayList<Color> colors) {
+		Objects.requireNonNull(dataModel);
 		updated();
-		requireDataSet();
 		legend.setUserSpecifiedInformation(true);
 		autoColors = false;
 		matchSeriesColors(colors);
 	}
 
-	public void setSeriesColor(Color c, int seriesNum) {
-		Objects.requireNonNull(c);
+	public void setSeriesColor(int seriesNum, Color c) {
+		Objects.requireNonNull(dataModel);
 		updated();
 		if (seriesNum < 0 || seriesNum >= series.size()) {
-			return;
+			throw new IndexOutOfBoundsException();
 		}
 		legend.setUserSpecifiedInformation(true);
 		series.get(seriesNum).setColor(c);
@@ -331,10 +376,10 @@ public abstract class Graph extends JPanel {
 		updateLegendColors();
 	}
 
-	public void setSeriesName(String text, int seriesNum) {
+	public void setSeriesName(int seriesNum, String text) {
 		updated();
 		if (seriesNum < 0 || seriesNum >= series.size()) {
-			return;
+			throw new IndexOutOfBoundsException();
 		}
 		legend.setUserSpecifiedInformation(true);
 		setLegendVisible(true);
@@ -351,9 +396,8 @@ public abstract class Graph extends JPanel {
 		if (autoColors) {
 			return;
 		}
-		matchSeriesColors(new ArrayList<Color>()); // Give it an empty list so
-													// it'll get colors from
-													// generator
+		// Give it an empty list so it'll get colours from generator
+		matchSeriesColors(new ArrayList<Color>());
 		autoColors = true;
 		repaint();
 	}
@@ -385,7 +429,7 @@ public abstract class Graph extends JPanel {
 	 * colours too, if the legend is visible.
 	 */
 	public void updated() {
-		if (dataSet != null) {
+		if (dataModel != null) {
 			convertPoints();
 		}
 		updateLegendColors();
@@ -479,6 +523,7 @@ public abstract class Graph extends JPanel {
 			return false;
 		if (!(obj instanceof Graph))
 			return false;
+		@SuppressWarnings("rawtypes")
 		Graph other = (Graph) obj;
 		if (id != other.id)
 			return false;

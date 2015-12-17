@@ -14,7 +14,7 @@ import utils.ColorGenerator;
 import utils.DoubleCheck;
 import utils.GraphicsAuxiliary;
 
-public abstract class XYGraph extends Graph {
+public abstract class XYGraph<E> extends Graph<E> {
 	private static final long serialVersionUID = -5744987843100969137L;
 
 	protected boolean drawXLabels = true;
@@ -52,14 +52,12 @@ public abstract class XYGraph extends Graph {
 	 * {@code prcntMargin}. This is in terms of the data values, it isn't a
 	 * pixel amount of space
 	 */
-	protected Double vpad;
+//	protected Double vpad;
+	protected Double vPadMin;
+	protected Double vPadMax;
 
 	protected boolean drawXAxis = true;
 	protected boolean drawYAxis = true;
-
-	public XYGraph() {
-		super();
-	}
 
 	protected void drawXGridLines(Graphics2D g) {
 		drawGridLines(g, true);
@@ -141,17 +139,17 @@ public abstract class XYGraph extends Graph {
 
 	@Override
 	protected void draw(Graphics2D g) {
-		if (dataSet != null) {
+		if (dataModel != null) {
 			int depCount = 0;
-			if (dataSet.getDependent().size() != 0) {
-				for (ArrayList<Double> l : dataSet.getDependent()) {
+			if (dataModel.getDependent().size() != 0) {
+				for (List<Double> l : dataModel.getDependent()) {
 					if (l.size() != 0) {
 						depCount++;
 						break;
 					}
 				}
 			}
-			if (dataSet.getIndependent().size() != 0 && depCount != 0) {
+			if (dataModel.getIndependent().size() != 0 && depCount != 0) {
 				updated();
 				g.setColor(backgroundColor);
 				GraphicsAuxiliary.setupAA(g);
@@ -340,24 +338,24 @@ public abstract class XYGraph extends Graph {
 	protected void processDependents() {
 		// Check if the current series does not agree with the data set's
 		// dependent variable size
-		if (series.size() <= dataSet.getDependent().size()) {
+		if (series.size() <= dataModel.getDependent().size()) {
 			for (int i = 0; i < series.size(); i++) {
-				series.get(i).setValues(dataSet.getDependent().get(i));
+				series.get(i).setValues(dataModel.getDependent().get(i));
 			}
-			for (int i = series.size(); i < dataSet.getDependent().size(); i++) {
-				series.add(new Series(dataSet.getDependent().get(i), "Series - " + (i + 1), DEFAULT_STROKE, ColorGenerator
+			for (int i = series.size(); i < dataModel.getDependent().size(); i++) {
+				series.add(new Series(dataModel.getDependent().get(i), "Series - " + (i + 1), DEFAULT_STROKE, ColorGenerator
 						.getColor(alpha)));
 			}
-		} else if (series.size() > dataSet.getDependent().size()) {
-			for (int i = series.size() - 1; i >= dataSet.getDependent().size(); i--) {
+		} else if (series.size() > dataModel.getDependent().size()) {
+			for (int i = series.size() - 1; i >= dataModel.getDependent().size(); i--) {
 				series.remove((int) i);
 			}
 			for (int i = 0; i < series.size(); i++) {
-				series.get(i).setValues(dataSet.getDependent().get(i));
+				series.get(i).setValues(dataModel.getDependent().get(i));
 			}
 		}
 
-		for (int i = 0; i < dataSet.getDependent().size(); i++) {
+		for (int i = 0; i < dataModel.getDependent().size(); i++) {
 			processNumberData(series.get(i).getValues(), yRangeAuto, series.get(i).getyPlotPoints(), false);
 		}
 	}
@@ -423,6 +421,99 @@ public abstract class XYGraph extends Graph {
 		}
 	}
 
+	/**
+	 * Sets the flag indicating whether or not to draw the x labels of a graph.
+	 * These labels are the ones labelling independent variables.
+	 * 
+	 * @param b
+	 *            The flag, true will cause labels to be drawn, false will cause
+	 *            labels not to be drawn.
+	 */
+	public void setDrawXLabels(boolean b) {
+		drawXLabels = b;
+		repaint();
+	}
+	
+	/**
+	 * Sets the flag indicating whether or not to draw the y labels of a graph.
+	 * These labels are the ones labelling each dependent variable.
+	 * 
+	 * @param b
+	 *            The flag, true will cause labels to be drawn, false will cause
+	 *            labels not to be drawn.
+	 */
+	public void setDrawYLabels(boolean b) {
+		drawYLabels = b;
+		repaint();
+	}
+
+	/**
+	 * Sets the flag to indicate whether or not to draw the horizontal axis.
+	 * 
+	 * @param b
+	 */
+	public void setDrawHorizontalAxis(boolean b) {
+		drawXAxis = b;
+		repaint();
+	}
+
+	public void setDrawVerticalAxis(boolean b) {
+		drawYAxis = b;
+		repaint();
+	}
+
+	public void setXMin(double x) {
+		xRangeAuto = false;
+		xMinVal = x;
+		repaint();
+	}
+
+	public void setXMax(double x) {
+		xRangeAuto = false;
+		xMaxVal = x;
+		repaint();
+	}
+
+	public void setYMin(double y) {
+		yRangeAuto = false;
+		yMinVal = y;
+		repaint();
+	}
+
+	public void autoCalculateXScale() {
+		xRangeAuto = true;
+		repaint();
+	}
+
+	public void autoCalculateYScale() {
+		yRangeAuto = true;
+		repaint();
+	}
+
+	public void setYMax(double y) {
+		yRangeAuto = false;
+		yMaxVal = y;
+		repaint();
+	}
+
+	public void drawVerticalGridLines(boolean b) {
+		drawXGridLines = b;
+		repaint();
+	}
+
+	public void drawHorizontalGridLines(boolean b) {
+		drawYGridLines = b;
+		repaint();
+	}
+
+	public boolean xRangeAuto() {
+		return xRangeAuto;
+	}
+
+	public boolean yRangeAuto() {
+		return yRangeAuto;
+	}
+	
 	protected void checkRange(boolean horizontal, boolean minimise, double val1, double val2) {
 		if (horizontal) {
 			if (minimise) {
@@ -453,7 +544,7 @@ public abstract class XYGraph extends Graph {
 			if (hpad == null) {
 				if (yLabel != null) {
 					// Add more padding for the ylabel
-					hpad = (xMaxVal - xMinVal) * prcntMargin / 0.5d;
+					hpad = (xMaxVal - xMinVal) * prcntMargin * 2;
 				} else {
 					hpad = (xMaxVal - xMinVal) * prcntMargin;
 				}
@@ -469,17 +560,19 @@ public abstract class XYGraph extends Graph {
 				return drawingPanel.getWidth() / 2;
 			}
 		} else {
-			if (vpad == null) {
-				vpad = (yMaxVal - yMinVal) * prcntMargin;
+			if (vPadMin == null) {
+				vPadMin = (yMaxVal - yMinVal) * prcntMargin;
 			}
-			double tmpYMin = yMinVal - vpad;
-			double tmpYMax = yMaxVal + vpad;
-
+			if (vPadMax == null) {
+				vPadMax = (yMaxVal - yMinVal) * prcntMargin;
+			}
+			double tmpYMin = yMinVal - vPadMin;
+			double tmpYMax = yMaxVal + vPadMax;
+			
 			if (!closeEnough(tmpYMax, tmpYMin)) {
 				double pp = drawingPanel.getHeight() / (tmpYMax - tmpYMin);
 				double val = (d - tmpYMin) * pp;
-				val = drawingPanel.getHeight() - val;
-				return val;
+				return drawingPanel.getHeight() - val;
 			} else {
 				return drawingPanel.getHeight() / 2;
 			}

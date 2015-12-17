@@ -7,11 +7,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class ContinuousDataSet extends DataSet {
-	private List<Double> indVars = Collections.synchronizedList(new ArrayList<>());;
+/**
+ * Class representing a Double vs Double dataset. Adds the ability to add a 2D
+ * mathematical function and to have the function automatically applied to all
+ * data in the independent dataset.
+ * 
+ * All operations in this class are thread safe, and update any swing observers
+ * in a thread safe manner.
+ */
+public class ContinuousDataSet extends DataSet<Double> {
 
 	/**
-	 * Math functions performed by the user of the frameowrk
+	 * Maths functions, mapping the independent dataset to a dependent dataset
 	 */
 	private List<Function<Double, Double>> functions = new ArrayList<>();
 
@@ -22,17 +29,13 @@ public class ContinuousDataSet extends DataSet {
 	 */
 	private List<Integer> functionIndexes = new ArrayList<>();
 
-	public ContinuousDataSet() {
-		super();
-	}
-
 	/**
 	 * Functional interface for performing maths functions
 	 * 
 	 * @param <E>
 	 *            Independent data type
 	 * @param <T>
-	 *            Dependent data type
+	 *            Dependent data type (the type returned by the function)
 	 */
 	public interface Function<E, T> {
 		T apply(E x);
@@ -40,8 +43,8 @@ public class ContinuousDataSet extends DataSet {
 
 	/**
 	 * Add a function to this data set, causes the result to be computed
-	 * straight away on the current thread, and causes any graphs watching this
-	 * dataset to redraw themselves
+	 * straight away on the current thread, and causes any observers watching
+	 * this dataset to be updated.
 	 * 
 	 * @param f
 	 *            New function to be performed
@@ -59,24 +62,11 @@ public class ContinuousDataSet extends DataSet {
 	}
 
 	/**
-	 * Return the independent variables list
-	 * 
-	 * @return Returns the list of independent variables
+	 * Set the independent dataset as well as reapplying all the functions to
+	 * this new independent dataset.
 	 */
-	public synchronized List<Double> getIndependent() {
-		return indVars;
-	}
-
-	public synchronized void setIndependent(Collection<?> list) {
-		Objects.requireNonNull(list);
-		ArrayList<Double> newVars = new ArrayList<>();
-		for (Object o : list) {
-			if (!(o instanceof Number)) {
-				throw new IllegalArgumentException("Only numbers are allowed in the independent variables");
-			}
-			newVars.add(((Number) o).doubleValue());
-		}
-		indVars = Collections.synchronizedList(newVars);
+	public synchronized void setIndependent(Collection<Double> list) {
+		super.setIndependent(list);
 		reApplyFunctions();
 	}
 
@@ -116,8 +106,8 @@ public class ContinuousDataSet extends DataSet {
 	}
 
 	/**
-	 * Removes the independent dataset, causes the graphs watching this dataset
-	 * to redraw themselves with no values
+	 * Removes the independent dataset, causes the swing observers to update
+	 * themselves with an empty independent dataset.
 	 */
 	public synchronized void removeIndependent() {
 		indVars.clear();

@@ -46,7 +46,7 @@ public class ScatterGraphExample {
 		// Graphs extend JPanels so need to treat them like a swing object still
 		SwingUtilities.invokeLater(() -> {
 			ScatterGraph g = new ScatterGraph();
-			g.setDataSet(d);
+			g.setDataModel(d);
 			g.setTitle("Scatter Graph Example");
 
 			ArrayList<Color> colors = new ArrayList<>();

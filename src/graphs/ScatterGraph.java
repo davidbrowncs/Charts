@@ -23,7 +23,6 @@ public class ScatterGraph extends ContinuousGraph {
 	protected ArrayList<Shape> shapes = new ArrayList<>();
 
 	public ScatterGraph() {
-		super();
 		shapes = new ArrayList<>(Arrays.asList(Shape.values()));
 		Collections.shuffle(shapes);
 	}

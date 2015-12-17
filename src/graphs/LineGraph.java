@@ -4,7 +4,7 @@ package graphs;
 import java.awt.Graphics2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
-import java.util.ArrayList;
+import java.util.List;
 
 public class LineGraph extends ContinuousGraph {
 	private static final long serialVersionUID = 830656033876679737L;
@@ -14,16 +14,12 @@ public class LineGraph extends ContinuousGraph {
 	protected static final double MAX_POINT_SIZE = 10d;
 	protected static final double MIN_POINT_SIZE = 1d;
 
-	public LineGraph() {
-		super();
-	}
-
 	@Override
 	protected void drawGraph(Graphics2D g) {
 		Double xPrev = null;
 		Double yPrev = null;
 		for (Series set : series) {
-			ArrayList<Double> yPlotPoints = set.getyPlotPoints();
+			List<Double> yPlotPoints = set.getyPlotPoints();
 			xPrev = xPlotPoints.get(0);
 			yPrev = yPlotPoints.get(0);
 			g.setColor(set.getColor());
@@ -46,7 +42,7 @@ public class LineGraph extends ContinuousGraph {
 		}
 	}
 
-	public void drawPoints(boolean b) {
+	public void setDrawPoints(boolean b) {
 		drawPoints = b;
 	}
 

@@ -3,40 +3,39 @@ package graphs;
 
 import java.awt.Dimension;
 import java.util.ArrayList;
-import java.util.Random;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
-import data.ContinuousDataSet;
-import data.DataSet;
+import data.CategoricDataSet;
 
 public class GraphTesting {
 
-	private static LineGraph g;
+	private static BarGraph g;
 
 	public static void main(String[] args) {
-		ContinuousDataSet d = new ContinuousDataSet();
-		ArrayList<Double> xVals = new ArrayList<>();
+		CategoricDataSet d = new CategoricDataSet();
+		ArrayList<String> xVals = new ArrayList<>();
 
-		Random rand = new Random();
-		for (double x = 1; x <= 10; x += 0.01d) {
-			xVals.add(x);
+		for (double x = 1; x <= 10; x += 1d) {
+			xVals.add("Something " + Double.toString(x));
 		}
 		d.setIndependent(xVals);
-
-		((ContinuousDataSet) d).addFunction(x -> {
-			return Math.sin(x.doubleValue());
-		});
+		
+		ArrayList<Double> y = new ArrayList<>();
+		for (int i = 0; i < 10; i++) {
+			y.add(Math.sin(i));
+		}
+		d.addDependentSet(y);
 
 		SwingUtilities.invokeLater(() -> {
+			
 			JFrame frame = new JFrame("Graph example");
-			g = new AreaLineGraph();
-			g.setDataSet(d);
-			g.drawPoints(false);
+			g = new BarGraph();
+			g.setDataModel(d);
 			g.setTitle("A title");
 			g.setLegendTitle("Legend");
-			g.setSeriesName("Series 1", 0);
+			g.setSeriesName(0, "Series 1");
 			g.setPreferredSize(new Dimension(1000, 1000));
 
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -45,6 +44,5 @@ public class GraphTesting {
 			frame.setLocationRelativeTo(null);
 			frame.setVisible(true);
 		});
-
 	}
 }

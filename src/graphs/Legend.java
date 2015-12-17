@@ -21,19 +21,13 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import utils.FontLoader;
 import utils.GraphicsAuxiliary;
-import fileHandling.FontLoader;
 import graphs.DefaultLabel.FontType;
 
 /**
- * Displays the legend data, i.e. a legend title, and the name given to
- * different data series. An example might be "Class names" in a graph that
- * displays all of the average grades across a school for a rather contrived
- * example.
- *
- * @param <T>
- *            Type of dependent data in the list of series', which stores
- *            information about the dependent data. Has to be a number.
+ * Displays the legend data, i.e. a legend title, the name given to different
+ * data series, and the colours they are being drawn with.
  */
 class Legend extends JPanel {
 	private static final long serialVersionUID = 5725435102513897890L;
@@ -44,33 +38,22 @@ class Legend extends JPanel {
 	private JLabel legendTitle = null;
 
 	/**
-	 * Reference to the series of data from the graph which has "this" legend.
+	 * Reference to the series of data from the graph which is using this
+	 * instance of a Legend
 	 */
 	private List<Series> series = null;
 
 	/**
 	 * References to the names of each series, used to remove the labels when
-	 * then ames of one or more data series changes.
+	 * then names of one or more data series changes.
 	 */
 	private ArrayList<JLabel> labels = new ArrayList<>();
-
-	/**
-	 * Stores the text in the above series labels. Used to compare the current
-	 * label texts against a new list of series names.
-	 */
-	private ArrayList<String> labelTexts = new ArrayList<>();
 
 	/**
 	 * Similar to {@code labels}, keeps references to the Color box panels so
 	 * they can be removed upon updating the colours for display data series'.
 	 */
 	private ArrayList<ColorBox> colorBoxes = new ArrayList<>();
-
-	/**
-	 * Stores the RGB value of the current color-boxes, used for comparison
-	 * against new colours.
-	 */
-	private ArrayList<Integer> colorboxColors = new ArrayList<>();
 
 	/**
 	 * Used to calculate the maximum allowable with for a series name. The
@@ -81,8 +64,8 @@ class Legend extends JPanel {
 
 	/**
 	 * "Pixel" value for the maximum allowable text width. Dependent upon the
-	 * font and the text used to calculate it. Pixel value calculated once from
-	 * the above text sample and cached.
+	 * font and the text used to calculate it ({@code MAX_STRING_SAMPLE}). Pixel
+	 * value calculated once initially with the default font and stored.
 	 */
 	private int maxLabelSize;
 
@@ -233,23 +216,6 @@ class Legend extends JPanel {
 	 *         or the user has not specified series names or colours.)
 	 */
 	boolean updateSeriesNames() {
-		if (series == null) {
-			return false;
-		}
-		int changeCounter = 0;
-		if (series.size() == labelTexts.size()) {
-			for (int i = 0; i < series.size(); i++) {
-				if (!labelTexts.get(i).equals(series.get(i).getName())) {
-					changeCounter++;
-				}
-			}
-		} else {
-			changeCounter = 1;
-		}
-		if (changeCounter == 0) {
-			return false;
-		}
-
 		for (JLabel l : labels) {
 			remove(l);
 		}
@@ -257,16 +223,13 @@ class Legend extends JPanel {
 			return false;
 		}
 		labels.clear();
-		labelTexts.clear();
 		int counter = legendTitle == null ? 0 : 1;
 
-		boolean needUpdatedColors = false;
 		for (int i = 0; i < series.size(); i++, counter++) {
 			String name = series.get(i).getName();
 			if (name == null) {
 				// If the name is null, indicates that it needs to be removed,
 				// so a colour box should not be added
-				needUpdatedColors = true;
 				continue;
 			}
 			JLabel l = new DefaultLabel(name, FontType.TEXT, fontLoader);
@@ -274,7 +237,6 @@ class Legend extends JPanel {
 			// Add html for wrapping
 			l.setText("<html><body style=\fontFamily: " + font.getFamily() + "\" size =\"" + font.getSize() + "\"></font>"
 					+ l.getText() + "</html");
-			labelTexts.add(name);
 			// Force it to wrap upon exceeding the maximum size, don't really
 			// care what it's maximum height is.
 			l.setMaximumSize(new Dimension(maxLabelSize, Integer.MAX_VALUE));
@@ -289,7 +251,7 @@ class Legend extends JPanel {
 			add(l, gbc_lblNewLabel_1);
 			/* End window builder code */
 		}
-		internalUpdateSeriesColors(needUpdatedColors);
+		updateSeriesColors();
 		this.revalidate();
 		this.repaint();
 		return true;
@@ -307,53 +269,13 @@ class Legend extends JPanel {
 		userSpecifiedSeriesInformation = b;
 	}
 
-	/**
-	 * Called when meta-information has been updated in the graph, either
-	 * colours changed or a series name changed. Calls the "internal" version of
-	 * this method, with the false flag to indicate that this was called
-	 * externally.
-	 * 
-	 * @return True if the series information was updated, false if not, or if
-	 *         the user has not allowed information to be displayed in the
-	 *         legend.
-	 */
 	boolean updateSeriesColors() {
-		return internalUpdateSeriesColors(false);
-	}
-
-	// Flag indicates whether this was called by legend or by the graph, if it
-	// was called internally skip the checking phase
-	/**
-	 * 
-	 * @param b
-	 * @return
-	 */
-	private boolean internalUpdateSeriesColors(boolean b) {
-		if (!b) { // If external, do checks, else skip
-			if (series == null) {
-				return false;
-			}
-			int changeCounter = 0;
-			if (series.size() == colorboxColors.size()) {
-				for (int i = 0; i < series.size(); i++) {
-					if (series.get(i).getColor().getRGB() != colorboxColors.get(i)) {
-						changeCounter++;
-					}
-				}
-			} else {
-				changeCounter = 1;
-			}
-			if (changeCounter == 0) {
-				return false;
-			}
-		}
 		for (ColorBox c : colorBoxes) {
 			remove(c);
 		}
 		if (!userSpecifiedSeriesInformation) {
 			return false;
 		}
-		colorboxColors.clear();
 		colorBoxes.clear();
 		int counter = legendTitle == null ? 0 : 1;
 		for (int i = 0; i < series.size(); i++, counter++) {
@@ -362,7 +284,6 @@ class Legend extends JPanel {
 			}
 			ColorBox c = new ColorBox(series.get(i).getColor());
 			colorBoxes.add(c);
-			colorboxColors.add(series.get(i).getColor().getRGB());
 
 			/* Window builder code */
 			GridBagConstraints gbc_panel = new GridBagConstraints();

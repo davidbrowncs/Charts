@@ -4,17 +4,18 @@ package graphs;
 import java.awt.Color;
 import java.awt.Stroke;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Series {
 
 	private String seriesName;
-	private ArrayList<Double> yPlotPoints = new ArrayList<>();
-	private ArrayList<Double> values = new ArrayList<>();
+	private List<Double> yPlotPoints = new ArrayList<>();
+	private List<Double> values = new ArrayList<>();
 	private boolean drawing = true;
 	private Stroke stroke;
 	private Color color;
 
-	public Series(ArrayList<Double> vals, String name, Stroke s, Color c) {
+	public Series(List<Double> vals, String name, Stroke s, Color c) {
 		values = vals;
 		this.seriesName = name;
 		this.stroke = s;
@@ -39,7 +40,7 @@ public class Series {
 	/**
 	 * @return the xPlotPoints
 	 */
-	public ArrayList<Double> getyPlotPoints() {
+	public List<Double> getyPlotPoints() {
 		return yPlotPoints;
 	}
 
@@ -54,7 +55,7 @@ public class Series {
 	/**
 	 * @return the values
 	 */
-	public ArrayList<Double> getValues() {
+	public List<Double> getValues() {
 		return values;
 	}
 
@@ -62,7 +63,7 @@ public class Series {
 	 * @param values
 	 *            the values to set
 	 */
-	public void setValues(ArrayList<Double> values) {
+	public void setValues(List<Double> values) {
 		this.values = values;
 	}
 

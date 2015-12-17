@@ -1,11 +1,11 @@
 
 package data;
 
-import graphs.Graph;
+import interfaces.DataModel;
+import interfaces.SwingObserver;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -19,39 +19,80 @@ import javax.swing.SwingUtilities;
  * Back-Cover Texts. A copy of the license is included in the section entitled
  * "GNU Free Documentation License".
  *
- * Class which is used to store data to be drawn by graphs. Interacting with
- * this class is thread safe, and updating a dataset will automatically cause a
- * graph with this dataset set as its dataset to redraw itself with the new data
- *
- * @param <E>
- *            Type of Data in the independent data set
- * @param <T>
- *            Type of data in the independent data set, must be a type of number
+ * Represents the data model for swing observers to get data from. Dependent
+ * variables must be numbers in this implementation, Doubles in particular. This
+ * class accepts any type of number as an argument, but the number is always
+ * converted to its double value, without checking for rounding or truncation,
+ * so for extremely precise or long numbers this will not be accurate.
+ * 
+ * Adding data to this dataset causes any swing observers observing the dataset
+ * to recalculate and redraw themselves automatically.
+ * 
+ * @param <I>
+ *            Type of data in the independent data set.
  */
-public abstract class DataSet {
+public abstract class DataSet<I> implements DataModel<I, Double> {
+
+	/**
+	 * Keeps track of how many datasets are created.
+	 */
 	private static int dataSetCounter = 0;
+
+	/**
+	 * ID for a dataset. ID is used to compare datasets via the {@code equals}
+	 * method. ID is the current {@code dataSetCounter}, and after being
+	 * assigned, the {@dataSetCounter} is incremented.
+	 */
 	private int id = dataSetCounter++;
 
 	/**
-	 * Dependent variables for the data set, Is a list of lists so multiple
-	 * dependent datasets can be represented on one graph
+	 * List of independent variables. Is only one dimensional, so only one set
+	 * of independents can be stored in one dataset at a time.
 	 */
-	protected List<ArrayList<Double>> depVars;
-
-	public abstract void setIndependent(Collection<?> list);
-
-	public abstract List<?> getIndependent();
+	protected List<I> indVars = new ArrayList<>();
 
 	/**
-	 * List of Graphs with this dataset as its dataset
+	 * Dependent variables for the data set, Is a list of lists, so multiple
+	 * dependent datasets can be represented by a dataset.
 	 */
-	protected List<Graph> observers = new ArrayList<>();
+	protected List<List<Double>> depVars = new ArrayList<List<Double>>();
 
 	/**
-	 * Init with thread safe lists
+	 * List of swing observers observing this dataset.
 	 */
-	public DataSet() {
-		depVars = Collections.synchronizedList(new ArrayList<ArrayList<Double>>());
+	protected List<SwingObserver<I, Double>> observers = new ArrayList<>();
+
+	/**
+	 * Set the independent dataset to the one provided.
+	 * 
+	 * @param c
+	 *            The collection to replace the current independent variables
+	 *            with.
+	 */
+	public synchronized void setIndependent(Collection<I> c) {
+		Objects.requireNonNull(c);
+		indVars.clear();
+		indVars.addAll(c);
+	}
+
+	/**
+	 * Add a single variable to the independent dataset.
+	 * 
+	 * @param t
+	 *            The value to be added to the independent dataset.
+	 */
+	public synchronized void addToIndependent(I t) {
+		Objects.requireNonNull(t);
+		indVars.add(t);
+	}
+
+	/**
+	 * Returns the independent dataset.
+	 * 
+	 * @return Returns the independent dataset as a list.
+	 */
+	public synchronized List<I> getIndependent() {
+		return indVars;
 	}
 
 	/**
@@ -59,77 +100,85 @@ public abstract class DataSet {
 	 * 
 	 * @return Returns the list of dependent data sets
 	 */
-	public synchronized List<ArrayList<Double>> getDependent() {
+	public synchronized List<List<Double>> getDependent() {
 		return depVars;
 	}
 
 	/**
-	 * Add a dependent dataset
+	 * Add a dependent dataset to the model.
 	 * 
 	 * @param l
-	 *            List of values to be added
+	 *            Collection of values to be added.
 	 */
-	public synchronized void addDependentSet(ArrayList<Double> l) {
+	public synchronized void addDependentSet(Collection<Double> l) {
 		Objects.requireNonNull(l);
-		depVars.add(l);
+		depVars.add(new ArrayList<>(l));
 		update();
 	}
 
 	/**
 	 * Removes the data set at the given index (index specified by the order in
-	 * which dependent datasets are added
+	 * which dependent datasets are added).
 	 */
 	public synchronized void removeDependent(int dataSet) {
+		if (dataSet < 0 || dataSet >= depVars.size()) {
+			throw new IndexOutOfBoundsException();
+		}
 		depVars.remove(dataSet);
 		update();
 	}
 
 	/**
-	 * Adds a graph to watch this dataset
+	 * Adds a data observer to receive a callback whenever the data model is
+	 * updated.
 	 * 
-	 * @param o
-	 *            The graph to begin watching this dataset
+	 * @param observer
+	 *            The observer to receive callbacks upon the data model being
+	 *            updated.
 	 */
-	public synchronized void addObserver(Graph o) {
-		Objects.requireNonNull(o);
-		if (!observers.contains(o)) {
-			observers.add(o);
+	public synchronized void addObserver(SwingObserver<I, Double> observer) {
+		Objects.requireNonNull(observer);
+		if (!observers.contains(observer)) {
+			Runnable r = () -> {
+				observer.setDataModel(this);
+				observer.updateDisplay();
+			};
+			observers.add(observer);
 			if (!SwingUtilities.isEventDispatchThread()) {
 				SwingUtilities.invokeLater(() -> {
-					o.setDataSet(this);
-					o.updated();
+					r.run();
 				});
 			} else {
-				o.setDataSet(this);
-				o.updated();
+				r.run();
 			}
 		}
 	}
 
 	/**
-	 * Stops the given chart from watching this dataset
+	 * Removes the given swing from this datamodel and is made to stop observing
+	 * the datamodel.
 	 * 
 	 * @param o
-	 *            Graph to update
+	 *            Swing observer to be removed.
 	 */
-	public synchronized void removeObserver(Graph o) {
+	public synchronized void removeObserver(SwingObserver<I, Double> o) {
 		Objects.requireNonNull(o);
 		observers.remove(o);
 		if (!SwingUtilities.isEventDispatchThread()) {
 			SwingUtilities.invokeLater(() -> {
-				if (o.getDataSet().equals(this)) {
-					o.removeDataSet();
+				if (o.getDataModel().equals(this)) {
+					o.removeDataModel();
 				}
 			});
 		} else {
-			if (o.getDataSet().equals(this)) {
-				o.removeDataSet();
+			if (o.getDataModel().equals(this)) {
+				o.removeDataModel();
 			}
 		}
 	}
 
 	/**
-	 * Stop all graphs currently watching this dataset from watching
+	 * Stop all swing observers currently watching this dataset from watching
 	 */
 	public synchronized void removeAllObservers() {
 		for (int i = observers.size() - 1; i >= 0; i--) {
@@ -138,18 +187,17 @@ public abstract class DataSet {
 	}
 
 	/**
-	 * Used whenever the graphs should be updated
+	 * Used whenever the swing observers need to be updated (when the data model
+	 * changes)
 	 */
 	protected void update() {
-		for (Graph o : observers) {
+		for (SwingObserver<I, Double> o : observers) {
 			if (!SwingUtilities.isEventDispatchThread()) {
 				SwingUtilities.invokeLater(() -> {
-					o.updated();
-					o.repaint();
+					o.updateDisplay();
 				});
 			} else {
-				o.updated();
-				o.repaint();
+				o.updateDisplay();
 			}
 		}
 	}
@@ -180,6 +228,7 @@ public abstract class DataSet {
 			return false;
 		if (!(obj instanceof DataSet))
 			return false;
+		@SuppressWarnings("rawtypes")
 		DataSet other = (DataSet) obj;
 		if (id != other.id)
 			return false;

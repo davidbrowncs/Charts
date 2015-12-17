@@ -9,15 +9,14 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 import data.ContinuousDataSet;
-import data.DataSet;
 
 public class LineGraphExample {
 	private static LineGraph g;
 
 	public static void main(String[] args) {
-		DataSet d = new ContinuousDataSet();
+		ContinuousDataSet d = new ContinuousDataSet();
 		ArrayList<Double> xVals = new ArrayList<>();
-		((ContinuousDataSet) d).addFunction(x -> {
+		d.addFunction(x -> {
 			return x + Math.log(x);
 		});
 
@@ -29,13 +28,13 @@ public class LineGraphExample {
 		SwingUtilities.invokeLater(() -> {
 			JFrame frame = new JFrame();
 			g = new LineGraph();
-			g.setDataSet(d);
+			g.setDataModel(d);
 			g.setLegendTitle("Only one series");
 			g.setTitle("Line graph example");
 			g.setLegendTransparency(0.5d);
 			g.setXLabel("Independent variable");
 			g.setYLabel("log(independent)");
-			g.setSeriesName("x + log(x)", 0);
+			g.setSeriesName(0, "x + log(x)");
 			g.setPreferredSize(new Dimension(1000, 1000));
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			frame.add(g);

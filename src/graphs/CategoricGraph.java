@@ -7,71 +7,91 @@ import java.awt.Graphics2D;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.util.List;
-import java.util.Objects;
 
-import data.CategoricDataSet;
-import data.ContinuousDataSet;
-
-public abstract class CategoricGraph extends XYGraph {
+/**
+ * Class representing all categoric graphs. The data model it requires is a
+ * collection of strings for the independent values, and a collection of
+ * collections of doubles for the dependent values.
+ */
+public abstract class CategoricGraph extends XYGraph<String> {
 
 	private static final long serialVersionUID = 3085485342069260175L;
 
+	/**
+	 * The "starting" point for the graph. This is the minimum value to use for
+	 * calculating how to scale and draw the graph as a pair of axis.
+	 */
 	protected double firstPoint = 0d;
+
+	/**
+	 * This is the value/independent value to use when calculating how to draw
+	 * the graph as a pair of axis and data.
+	 */
 	protected double valPerIndependent = 1d;
 
-	public CategoricGraph() {
-		super();
-	}
-
-	// Only called for independents
+	/**
+	 * Called to process the independent data. Simply iterates through the
+	 * length of the {@code dataModel}'s independent dataset and adds the
+	 * corresponding x value to the {@code xPlotPoint}s list. The x value is
+	 * determined by {@code firstPoint}, and {@code valPerIndependent}. Each
+	 * independent variable is given an equal amount of space on the chart.
+	 * 
+	 * @param list
+	 *            The List of strings to process as the independent dataset.
+	 */
 	protected void processStringData(List<String> list) {
 		xMinVal = 0d;
-		xMaxVal = (double) dataSet.getIndependent().size();
-		for (int i = 0; i < dataSet.getIndependent().size(); i++) {
+		xMaxVal = (double) dataModel.getIndependent().size();
+		for (int i = 0; i < dataModel.getIndependent().size(); i++) {
 			xPlotPoints.add(convert(i + 1, true));
 		}
 	}
 
-	protected void setDataSet(CategoricDataSet dataSet) {
-		Objects.requireNonNull(dataSet);
-		if (!dataSet.equals(this.dataSet)) {
-			this.dataSet = dataSet;
-			dataSet.addObserver(this);
-			updated();
-			legend.setSeries(series);
-		}
-	}
-
-	protected void setDataSet(ContinuousDataSet dataSet) {
-		throw new UnsupportedOperationException();
-	}
-
-	@SuppressWarnings("unchecked")
+	/**
+	 * Need to check the maximum draw length of the categoric variables first.
+	 * If the string is long enough to be rotated 90 degrees, then extra space
+	 * needs to be added around the graph to account for this.
+	 */
 	protected double convert(double d, boolean horizontal) {
 		if (drawingPanel.getHeight() != 0) {
-			if (vpad == null) {
-				AffineTransform aff = new AffineTransform();
-				FontRenderContext fontRenderContext = new FontRenderContext(aff, true, true);
-				Font font = fontLoader.getLabelFont();
-				double maxTextWidth = 0;
-				// Get max
-				for (String s : (List<String>) dataSet.getIndependent()) {
-					double val = font.getStringBounds(s, fontRenderContext).getWidth();
-					if (val > maxTextWidth) {
-						maxTextWidth = val;
+			AffineTransform aff = new AffineTransform();
+			FontRenderContext fontRenderContext = new FontRenderContext(aff, true, true);
+			Font font = fontLoader.getLabelFont();
+
+			double maxTextWidth = 0;
+			for (String s : dataModel.getIndependent()) {
+				maxTextWidth = Math.max(font.getStringBounds(s, fontRenderContext).getWidth(), maxTextWidth);
+			}
+			maxTextWidth += 5;
+			double yLoc = super.convert(zeroIsInRange(false) ? 0d : yMinVal, false);
+
+			if (yLoc + maxTextWidth > drawingPanel.getHeight()) {
+				double columnWidth = super.convert(firstPoint + valPerIndependent, true) - super.convert(firstPoint, true);
+
+				if (maxTextWidth > columnWidth) {
+					double range = yMaxVal - yMinVal;
+					double stringMargin = (maxTextWidth / drawingPanel.getHeight());
+
+					if (prcntMargin - stringMargin > 0) {
+						vPadMin = range * (prcntMargin + stringMargin / 2d);
+						vPadMax = range * (prcntMargin - stringMargin / 2d);
+					} else {
+						double diff = (0 - (prcntMargin - stringMargin)) / 0.5d;
+						vPadMin = range * (prcntMargin + diff + stringMargin / 2d);
+						vPadMax = range * (prcntMargin + diff - stringMargin / 2d);
 					}
-				}
-				if (maxTextWidth + 5 > super.convert(firstPoint + valPerIndependent, true) - super.convert(firstPoint, true)) {
-					double margin = prcntMargin + (maxTextWidth / drawingPanel.getHeight());
-					vpad = (yMaxVal - yMinVal) * margin;
 				}
 			}
 		}
 		return super.convert(d, horizontal);
 	}
 
-	@SuppressWarnings("unchecked")
-	public void drawXLabels(Graphics2D g) {
+	/**
+	 * Draws the independent variables as the labels. If the length of the
+	 * maximum length string in the independent variables collection is too
+	 * long, all strings will be rotated and drawn vertically.
+	 */
+	protected void drawXLabels(Graphics2D g) {
 		utils.GraphicsAuxiliary.setupAA(g);
 		g.setStroke(axisStroke);
 		g.setColor(axisStrokeColor);
@@ -82,26 +102,18 @@ public abstract class CategoricGraph extends XYGraph {
 		boolean drawHorizontal = true;
 		FontMetrics fm = g.getFontMetrics();
 
-		// Only way a dataset can be assigned to a graph is through the
-		// "setDataSet" method, which accepts the super DataSet as an argument.
-		// which will call either the "setDataSet" accepting a CategoricDataSet
-		// as an argument, or ContinuousDataSet as an argument. If the dataset
-		// is not a CategoricdataSet, an exception will be thrown, so the only
-		// possible independent variables in a CategoricGraph is a list of
-		// Strings, since a CategoricDataSet has a collection of strings for its
-		// independent variables.
-		for (String s : (List<String>) dataSet.getIndependent()) {
+		for (String s : dataModel.getIndependent()) {
 			if (fm.stringWidth(s) > columnWidth) {
 				drawHorizontal = false;
 				break;
 			}
 		}
 
-		for (int i = 0; i < dataSet.getIndependent().size(); i++) {
+		for (int i = 0; i < dataModel.getIndependent().size(); i++) {
 			double xLoc = convert(firstPoint + valPerIndependent * i + valPerIndependent / 2d, true);
 			double yLoc = convert(zeroIsInRange(false) ? 0d : yMinVal, false);
 
-			String text = (String) dataSet.getIndependent().get(i);
+			String text = dataModel.getIndependent().get(i);
 
 			if (drawHorizontal) {
 				g.drawString(text, (int) (xLoc - fm.stringWidth(text) / 2), (int) (yLoc + fm.getHeight()));
@@ -117,7 +129,11 @@ public abstract class CategoricGraph extends XYGraph {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see graphs.Graph#convertPoints()
+	 */
 	@Override
 	protected void convertPoints() {
 		xPlotPoints.clear();
@@ -128,10 +144,11 @@ public abstract class CategoricGraph extends XYGraph {
 		}
 
 		hpad = null;
-		vpad = null;
+		vPadMin = null;
+		vPadMax = null;
 
-		processStringData((List<String>) dataSet.getIndependent());
 		processDependents();
+		processStringData(dataModel.getIndependent());
 		yRangeAuto = false;
 
 		if (yMinVal != null) {

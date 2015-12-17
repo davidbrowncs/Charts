@@ -1,5 +1,5 @@
 
-package fileHandling;
+package utils;
 
 import java.awt.Font;
 import java.awt.FontFormatException;
@@ -12,6 +12,12 @@ import java.io.InputStream;
 public final class FontLoader {
 
 	private final String testString = "test";
+
+	private Font defaultFont;
+	private static final float DEFAULT_TITLE_SIZE = 28f;
+	private static final float DEFAULT_SUBTITLE_SIZE = 24f;
+	private static final float DEFAULT_TEXT_SIZE = 20f;
+	private static final float DEFAULT_LABEL_SIZE = 15f;
 
 	private Font titleFont = null;
 	private double titleFontPhysicalHeight;
@@ -30,6 +36,13 @@ public final class FontLoader {
 	public synchronized Font getTitleFont() {
 		checkLoaded();
 		return titleFont;
+	}
+	
+	public synchronized void resetFonts() {
+		titleFont = defaultFont.deriveFont(DEFAULT_TITLE_SIZE);
+		subTitleFont = defaultFont.deriveFont(DEFAULT_SUBTITLE_SIZE);
+		textFont = defaultFont.deriveFont(DEFAULT_TEXT_SIZE);
+		labelFont = defaultFont.deriveFont(DEFAULT_LABEL_SIZE);
 	}
 
 	public synchronized Font getSubTitleFont() {
@@ -71,11 +84,6 @@ public final class FontLoader {
 		labelPhysicalHeight = fontHeight(labelFont);
 	}
 
-	public synchronized void resetFonts() {
-		loaded = false;
-		checkLoaded();
-	}
-	
 	private void checkLoaded() {
 		if (!loaded) {
 			loadFont();
@@ -116,19 +124,21 @@ public final class FontLoader {
 			InputStream is = FontLoader.class.getResourceAsStream("/resources/Aaargh.ttf");
 			Font tmp = Font.createFont(Font.PLAIN, is);
 			GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(tmp);
-			
-			titleFont = tmp.deriveFont(28f);
+
+			titleFont = tmp.deriveFont(DEFAULT_TITLE_SIZE);
 			titleFontPhysicalHeight = fontHeight(titleFont);
 
-			textFont = tmp.deriveFont(20f);
-			textPhysicalHeight = fontHeight(textFont);
-
-			subTitleFont = tmp.deriveFont(24f);
+			subTitleFont = tmp.deriveFont(DEFAULT_SUBTITLE_SIZE);
 			subTitlePhysicalHeight = fontHeight(subTitleFont);
 
-			labelFont = tmp.deriveFont(15f);
+			textFont = tmp.deriveFont(DEFAULT_TEXT_SIZE);
+			textPhysicalHeight = fontHeight(textFont);
+
+			labelFont = tmp.deriveFont(DEFAULT_LABEL_SIZE);
 			labelPhysicalHeight = fontHeight(labelFont);
-			
+
+			defaultFont = tmp;
+
 			loaded = true;
 		} catch (IOException | FontFormatException e1) {
 			e1.printStackTrace();
